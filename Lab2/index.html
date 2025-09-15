@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Global Temperature — D3 Variations</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    :root { --grid:#e8e8e8; --ink:#222; --muted:#666; --accent:#2a78ff; }
+    body { margin:0; padding:16px; font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif; color:var(--ink); }
+    h1 { margin:0 0 6px; font-size:1.15rem; }
+    h2 { margin:14px 0 6px; font-size:1rem; }
+    p  { margin:0 0 12px; color:var(--muted); }
+    .card { border:1px solid #eee; border-radius:10px; padding:10px; margin:14px 0; box-shadow:0 1px 4px rgba(0,0,0,.04); }
+    .chart { width:100%; height:520px; display:block; }
+    .axis path,.axis line{ stroke:#aaa; }
+    .grid line{ stroke:var(--grid); }
+    .axis-label{ fill:var(--muted); font-size:12px; }
+    .tooltip{
+      position:absolute; pointer-events:none; background:#fff; border:1px solid #ddd;
+      border-radius:8px; padding:6px 8px; font-size:12px; box-shadow:0 2px 10px rgba(0,0,0,.08);
+    }
+    /* chart1 circles */
+    .dot1{ fill:var(--accent); fill-opacity:.55; stroke:#163c7c; stroke-opacity:.5; }
+    .dot1:hover{ fill-opacity:.85; stroke-opacity:1; }
+    /* chart2 circles (color = uncertainty) */
+    .dot2{ stroke:#333; stroke-opacity:.25; fill-opacity:.9; }
+    /* chart3 lines */
+    .series-line{ fill:none; stroke-width:1.5; }
+    .series-mean{ fill:none; stroke-width:2.5; }
+    .series-pts circle{ fill:#000; opacity:.4; }
+    /* simple color legend (chart2) */
+    .legend rect{ stroke:#aaa; fill:none; }
+    .legend text{ font-size:12px; fill:#333; }
+  </style>
+</head>
+<body>
+  <h1>D3 Scatterplot & Variations — Global Temperatures</h1>
+
+  <h2>Chart 1 — Scatter: y=LandAverageTemperature (LAT), x=Time, r=Uncertainty (LATU)</h2>
+  <div id="chart1" class="card"><svg class="chart" role="img" aria-label="Scatterplot LAT vs Time (radius=LATU)"></svg></div>
+
+  <h2>Chart 2 — Scatter: y=LAT, x=Time, <em>color</em>=Uncertainty (LATU), fixed radius</h2>
+  <div id="chart2" class="card"><svg class="chart" role="img" aria-label="Scatterplot LAT vs Time (color=LATU)"></svg></div>
+
+  <h2>Chart 3 — Lines: y=Land+Ocean Temperature (LOAT), x=Time, with 12-mo rolling mean</h2>
+  <div id="chart3" class="card"><svg class="chart" role="img" aria-label="Line chart LOAT vs Time with rolling mean"></svg></div>
+
+  <!-- D3 v7 -->
+  <script src="https://cdn.jsdelivr.net/npm/d3@7"></script>
+  <script>
+  // -------- Helpers --------
+  function parseYYYYMMDD(n){
+    const s = String(n); const y=+s.slice(0,4), m=+s.slice(4,6)-1, d=+s.slice(6,8);
+    return new Date(y,m,d);
+  }
+  const acc = {
+    t: d => parseYYYYMMDD(d.time),
+    LAT: d => +d.LAT,
+    LATU: d => +d.LATU,
+    LOAT: d => +d.LOAT,
+    LOATU: d => +d.LOATU
+  };
+  function rollingMean(values, window=12){
+    const out = Array(values.length).fill(null);
+    let sum = 0, q = [];
+    for (let i=0;i<values.length;i++){
+      const v = values[i];
+      if (Number.isFinite(v)){ q.push(v); sum += v; }
+      if (q.length > window){ sum -= q.shift(); }
+      if (q.length === window) out[i] = sum / window;
+    }
+    return out;
+  }
+  function setupFrame(svgSel){
+    const svg = svgSel;
+    const vb = svg.node().getBoundingClientRect();
+    const width  = Math.max(760, vb.width  || 760);
+    const height = Math.max(460, vb.height || 520);
+    const m = {top:20, right:28, bottom:58, left:62};
+    const iw = width - m.left - m.right;
+    const ih = height - m.top - m.bottom;
+    svg.attr("viewBox",`0 0 ${width} ${height}`).attr("preserveAspectRatio","xMidYMid meet");
+    const g = svg.append("g").attr("transform",`translate(${m.left},${m.top})`);
+    const gridX = s => d3.axisBottom(s).ticks(10);
+    const gridY = s => d3.axisLeft(s).ticks(6);
+    return {svg, g, width, height, m, iw, ih, gridX, gridY};
+  }
+
+  // Shared tooltip
+  const tip = d3.select("body").append("div").attr("class","tooltip").style("opacity",0);
+
+  // Load once; draw three charts
+  d3.json("GlobalTemperatures.json").then(raw => {
+    const rows = Array.isArray(raw) ? raw : (raw.temperature || raw.temperatures || []);
+    const data = rows.map(d => ({
+      t: acc.t(d),
+      LAT: acc.LAT(d),
+      LATU: acc.LATU(d),
+      LOAT: acc.LOAT(d),
+      LOATU: acc.LOATU(d)
+    })).filter(d => d.t && Number.isFinite(d.LAT) && Number.isFinite(d.LATU) && Number.isFinite(d.LOAT));
+
+    // Common scales (time domain shared)
+    const timeExtent = d3.extent(data, d => d.t);
+
+    // ===== Chart 1: Scatter (size = uncertainty) =====
+    (function(){
+      const {svg, g, iw, ih, gridX, gridY} = setupFrame(d3.select("#chart1 .chart"));
+      // BACKGROUND IMAGE (+5%): sits behind all marks
+      g.append("image")
+        .attr("href", "world-map-light.png")
+        .attr("x", 0).attr("y", 0)
+        .attr("width", iw).attr("height", ih)
+        .attr("preserveAspectRatio", "none")   // fill exactly iw × ih
+        .attr("opacity", 0.18)
+        .lower();
+
+
+      const x = d3.scaleTime().domain(timeExtent).range([0, iw]);
+      const y = d3.scaleLinear().domain(d3.extent(data, d => d.LAT)).nice().range([ih, 0]);
+      const r = d3.scaleSqrt().domain(d3.extent(data, d => d.LATU)).range([1.5, 10]);
+
+      g.append("g").attr("class","grid").attr("transform",`translate(0,${ih})`)
+        .call(gridX(x).tickSize(-ih).tickFormat(""));
+      g.append("g").attr("class","grid").call(gridY(y).tickSize(-iw).tickFormat(""));
+
+      g.append("g").attr("class","axis").attr("transform",`translate(0,${ih})`).call(d3.axisBottom(x));
+      g.append("g").attr("class","axis").call(d3.axisLeft(y));
+
+      g.append("text").attr("class","axis-label").attr("x", iw/2).attr("y", ih+42)
+        .attr("text-anchor","middle").text("Time (Date)");
+      g.append("text").attr("class","axis-label").attr("transform","rotate(-90)")
+        .attr("x", -ih/2).attr("y", -46).attr("text-anchor","middle")
+        .text("Land Average Temperature (°C)");
+
+      g.selectAll(".dot1")
+        .data(data)
+        .enter()
+        .append("circle")
+        .attr("class","dot1")
+        .attr("cx", d => x(d.t))
+        .attr("cy", d => y(d.LAT))
+        .attr("r",  d => r(d.LATU))
+        .on("mouseenter", (ev, d) => {
+          tip.style("opacity",1).html(
+            `<strong>${d.t.toISOString().slice(0,10)}</strong><br/>
+             LAT: <strong>${d.LAT.toFixed(2)} °C</strong><br/>
+             LATU: <strong>${d.LATU.toFixed(3)}</strong>`
+          );
+        })
+        .on("mousemove", ev => tip.style("left",(ev.pageX+12)+"px").style("top",(ev.pageY-28)+"px"))
+        .on("mouseleave", () => tip.style("opacity",0));
+    })();
+
+    // ===== Chart 2: Scatter (color = uncertainty; fixed radius) =====
+    (function(){
+      const {svg, g, iw, ih, gridX, gridY} = setupFrame(d3.select("#chart2 .chart"));
+      const x = d3.scaleTime().domain(timeExtent).range([0, iw]);
+      const y = d3.scaleLinear().domain(d3.extent(data, d => d.LAT)).nice().range([ih, 0]);
+      const c = d3.scaleSequential(d3.extent(data, d => d.LATU), d3.interpolateTurbo); // uncertainty -> color
+
+      g.append("g").attr("class","grid").attr("transform",`translate(0,${ih})`)
+        .call(gridX(x).tickSize(-ih).tickFormat(""));
+      g.append("g").attr("class","grid").call(gridY(y).tickSize(-iw).tickFormat(""));
+
+      g.append("g").attr("class","axis").attr("transform",`translate(0,${ih})`).call(d3.axisBottom(x));
+      g.append("g").attr("class","axis").call(d3.axisLeft(y));
+
+      g.append("text").attr("class","axis-label").attr("x", iw/2).attr("y", ih+42)
+        .attr("text-anchor","middle").text("Time (Date)");
+      g.append("text").attr("class","axis-label").attr("transform","rotate(-90)")
+        .attr("x", -ih/2).attr("y", -46).attr("text-anchor","middle")
+        .text("Land Average Temperature (°C)");
+
+      const R = 3.5; // fixed
+      g.selectAll(".dot2")
+        .data(data)
+        .enter()
+        .append("circle")
+        .attr("class","dot2")
+        .attr("cx", d => x(d.t))
+        .attr("cy", d => y(d.LAT))
+        .attr("r",  R)
+        .attr("fill", d => c(d.LATU))
+        .on("mouseenter", (ev, d) => {
+          tip.style("opacity",1).html(
+            `<strong>${d.t.toISOString().slice(0,10)}</strong><br/>
+             LAT: <strong>${d.LAT.toFixed(2)} °C</strong><br/>
+             LATU: <strong>${d.LATU.toFixed(3)}</strong>`
+          );
+        })
+        .on("mousemove", ev => tip.style("left",(ev.pageX+12)+"px").style("top",(ev.pageY-28)+"px"))
+        .on("mouseleave", () => tip.style("opacity",0));
+
+      // Simple color legend (min -> max uncertainty)
+      const [uMin, uMax] = d3.extent(data, d => d.LATU);
+      const Lw = 160, Lh = 12;
+      const lg = g.append("g").attr("class","legend").attr("transform",`translate(${iw- Lw - 8}, ${8})`);
+      const gradId = "uncGrad";
+      const defs = svg.append("defs");
+      const grad = defs.append("linearGradient").attr("id", gradId).attr("x1","0%").attr("x2","100%").attr("y1","0%").attr("y2","0%");
+      const stops = d3.range(0,1.001,0.1);
+      stops.forEach(t => grad.append("stop").attr("offset", (t*100)+"%").attr("stop-color", c(uMin + t*(uMax-uMin))));
+      lg.append("rect").attr("x",0).attr("y",0).attr("width",Lw).attr("height",Lh).attr("fill",`url(#${gradId})`);
+      lg.append("text").attr("x",0).attr("y",Lh+12).text(uMin.toFixed(2));
+      lg.append("text").attr("x",Lw).attr("y",Lh+12).attr("text-anchor","end").text(uMax.toFixed(2));
+      lg.append("text").attr("x",Lw/2).attr("y",-4).attr("text-anchor","middle").text("Uncertainty (LATU)");
+    })();
+
+    // ===== Chart 3: Lines (LOAT + 12-mo rolling mean) =====
+    (function(){
+      const {svg, g, iw, ih, gridX, gridY} = setupFrame(d3.select("#chart3 .chart"));
+      const x = d3.scaleTime().domain(timeExtent).range([0, iw]);
+      const y = d3.scaleLinear().domain(d3.extent(data, d => d.LOAT)).nice().range([ih, 0]);
+
+      g.append("g").attr("class","grid").attr("transform",`translate(0,${ih})`)
+        .call(gridX(x).tickSize(-ih).tickFormat(""));
+      g.append("g").attr("class","grid").call(gridY(y).tickSize(-iw).tickFormat(""));
+
+      g.append("g").attr("class","axis").attr("transform",`translate(0,${ih})`).call(d3.axisBottom(x));
+      g.append("g").attr("class","axis").call(d3.axisLeft(y));
+
+      g.append("text").attr("class","axis-label").attr("x", iw/2).attr("y", ih+42)
+        .attr("text-anchor","middle").text("Time (Date)");
+      g.append("text").attr("class","axis-label").attr("transform","rotate(-90)")
+        .attr("x", -ih/2).attr("y", -46).attr("text-anchor","middle")
+        .text("Land + Ocean Temperature (°C)");
+
+      // Line generators
+      const line = d3.line().x(d => x(d.t)).y(d => y(d.LOAT));
+      const LOAT_series = data.map(d => ({t:d.t, LOAT:d.LOAT}));
+
+      // Rolling mean
+      const meanVals = rollingMean(data.map(d => d.LOAT), 12);
+      const meanSeries = data.map((d,i) => ({t:d.t, mean: meanVals[i]})).filter(d => Number.isFinite(d.mean));
+      const meanLine = d3.line().x(d=>x(d.t)).y(d=>y(d.mean));
+
+      // Path for raw monthly LOAT
+      g.selectAll(".series-line")
+        .data([LOAT_series])
+        .enter()
+        .append("path")
+        .attr("class","series-line")
+        .attr("stroke","#6d94ff")
+        .attr("d", line);
+
+      // Points for monthly LOAT (subtle)
+      g.append("g").attr("class","series-pts")
+        .selectAll("circle")
+        .data(LOAT_series)
+        .enter()
+        .append("circle")
+        .attr("r",1.5)
+        .attr("cx", d=>x(d.t))
+        .attr("cy", d=>y(d.LOAT));
+
+      // Rolling 12-mo mean
+      g.selectAll(".series-mean")
+        .data([meanSeries])
+        .enter()
+        .append("path")
+        .attr("class","series-mean")
+        .attr("stroke","#e24a33")
+        .attr("d", meanLine);
+
+      // Tooltip on hover over points
+      g.selectAll(".series-pts circle")
+        .on("mouseenter", (ev, d) => {
+          tip.style("opacity",1).html(
+            `<strong>${d.t.toISOString().slice(0,10)}</strong><br/>
+             LOAT: <strong>${d.LOAT.toFixed(2)} °C</strong>`
+          );
+        })
+        .on("mousemove", ev => tip.style("left",(ev.pageX+12)+"px").style("top",(ev.pageY-28)+"px"))
+        .on("mouseleave", () => tip.style("opacity",0));
+    })();
+  });
+  </script>
+</body>
+</html>
