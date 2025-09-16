@@ -1,0 +1,165 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Assignment 1</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <style>
+    :root { --w: 400; --h: 400; }
+
+    body {
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji";
+      margin: 24px;
+      line-height: 1.35;
+    }
+    h2 { margin: 24px 0 8px; }
+
+    .charts {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(420px, 1fr));
+      gap: 28px;
+      align-items: start;
+    }
+
+    svg {
+      width: 400px;
+      height: 400px;
+      border: 0;
+      background: white;
+      box-shadow: 0 4px 16px black;
+      border-radius: 8px;
+    }
+
+    .bar {
+      stroke: #000; /* black outlines as requested */
+      stroke-width: 2;
+      shape-rendering: crispEdges;
+    }
+
+    #blue_bar_chart .bar { fill: blue; }
+    #red_bar_chart  .bar { fill: red; }
+
+    .line {
+      stroke: #111;
+      stroke-width: 3;
+      fill: none;
+      stroke-linejoin: round;
+      stroke-linecap: round;
+    }
+    .baseline {
+      stroke: black;
+      stroke-width: 1.5;
+      opacity: .5;
+    }
+
+    .caption {
+      margin-top: 6px;
+      color: grey;
+      font-size: 14px;
+    }
+  </style>
+</head>
+<body>
+  <h1> Assignment 1 </h1>
+
+  <div class="charts">
+    <div>
+      <h2>Blue Bars</h2>
+      <svg id="blue_bar_chart" viewBox="0 0 400 400" role="img" aria-label="Blue bar chart"></svg>
+    </div>
+
+    <div>
+      <h2>Red Bars</h2>
+      <svg id="red_bar_chart" viewBox="0 0 400 400" role="img" aria-label="Red bar chart"></svg>
+    </div>
+
+    <div>
+      <h2>Line (made of &lt;line&gt; elements)</h2>
+      <svg id="line_line_chart" viewBox="0 0 400 400" role="img" aria-label="Line chart using multiple line segments"></svg>
+    </div>
+
+    <div>
+      <h2>Line (made of one &lt;path&gt;)</h2>
+      <svg id="path_line_chart" viewBox="0 0 400 400" role="img" aria-label="Line chart using a single path"></svg>
+    </div>
+  </div>
+
+  <script>
+    const heights = [150, 225, 225, 300, 300, 225, 225, 150];
+
+    const W = 400, H = 400;
+    const n = heights.length;
+    const barW = W / n;
+
+    function buildBars(targetSvg) {
+      // ground line
+      const base = document.createElementNS("http://www.w3.org/2000/svg", "line");
+      base.setAttribute("x1", "0"); base.setAttribute("y1", String(H-1));
+      base.setAttribute("x2", String(W)); base.setAttribute("y2", String(H-1));
+      base.setAttribute("class", "baseline");
+      targetSvg.appendChild(base);
+
+      heights.forEach((h, i) => {
+        const x = i * barW;
+        const y = H - h;
+        const rect = document.createElementNS("http://www.w3.org/2000/svg", "rect");
+        rect.setAttribute("class", "bar");
+        rect.setAttribute("x", String(x));
+        rect.setAttribute("y", String(y));
+        rect.setAttribute("width", String(Math.ceil(barW)));
+        rect.setAttribute("height", String(h));
+        targetSvg.appendChild(rect);
+      });
+    }
+
+    buildBars(document.getElementById("blue_bar_chart"));
+    buildBars(document.getElementById("red_bar_chart"));
+
+    const points = heights.map((h, i) => {
+      const cx = i * barW + barW / 2;
+      const cy = H - h;
+      return [cx, cy];
+    });
+
+    // Draw line chart using multiple <line> elements
+    (function drawLineSegments() {
+      const svg = document.getElementById("line_line_chart");
+      const base = document.createElementNS("http://www.w3.org/2000/svg", "line");
+      base.setAttribute("x1", "0"); base.setAttribute("y1", String(H-1));
+      base.setAttribute("x2", String(W)); base.setAttribute("y2", String(H-1));
+      base.setAttribute("class", "baseline");
+      svg.appendChild(base);
+
+      for (let i = 0; i < points.length - 1; i++) {
+        const [x1, y1] = points[i];
+        const [x2, y2] = points[i + 1];
+        const seg = document.createElementNS("http://www.w3.org/2000/svg", "line");
+        seg.setAttribute("class", "line");
+        seg.setAttribute("x1", String(x1));
+        seg.setAttribute("y1", String(y1));
+        seg.setAttribute("x2", String(x2));
+        seg.setAttribute("y2", String(y2));
+        svg.appendChild(seg);
+      }
+    })();
+
+    // Draw line chart using a single <path>
+    (function drawPathLine() {
+      const svg = document.getElementById("path_line_chart");
+      const base = document.createElementNS("http://www.w3.org/2000/svg", "line");
+      base.setAttribute("x1", "0"); base.setAttribute("y1", String(H-1));
+      base.setAttribute("x2", String(W)); base.setAttribute("y2", String(H-1));
+      base.setAttribute("class", "baseline");
+      svg.appendChild(base);
+
+      const d = points
+        .map(([x, y], idx) => (idx === 0 ? `M ${x} ${y}` : `L ${x} ${y}`))
+        .join(" ");
+      const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
+      path.setAttribute("class", "line");
+      path.setAttribute("d", d);
+      svg.appendChild(path);
+    })();
+  </script>
+</body>
+</html>
