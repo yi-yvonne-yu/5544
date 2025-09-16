@@ -1,21 +1,5 @@
 # Global Temperature Visualization — D3.js Assignment
 
-## Description
-In this assignment, I implemented visualization techniques discussed in the mini-lectures, slides, and videos. The visualizations are built using **D3.js** (via `selectAll`, `data`, `enter`, `append`) and display the **Global Temperatures** dataset (`GlobalTemperatures.json`).
-
-The dataset has **1,992 data points** and 4 dimensions:
-- `time` — date (format: `YYYYMMDD`)
-- `LAT` — Land Average Temperature (°C)
-- `LATU` — Land Average Temperature Uncertainty
-- `LOAT` — Land and Ocean Average Temperature
-
-Three charts are required, placed in the `<svg>` containers with IDs:
-- `chart1`
-- `chart2`
-- `chart3`
-
----
-
 ## Sketches (30%)
 
 Before coding, I created several paper sketches to explore possible visualizations. Quantity and multivariate exploration were prioritized over polish. Each sketch addresses a specific question:
@@ -48,13 +32,13 @@ Before coding, I created several paper sketches to explore possible visualizatio
 
 ## Visualization (70%)
 
-The final interactive visualizations were implemented in **`index.html`** using D3.js:
+<!-- The final interactive visualizations were implemented in **`index.html`** using D3.js: -->
 
 - **Chart 1 (`#chart1`)**: Scatterplot of **Land Average Temperature (y)** vs **Time (x)**, with **circle radius** representing **Uncertainty (LATU)**.  
-- **Chart 2 (`#chart2`)**: Scatterplot of **Land Average Temperature (y)** vs **Time (x)**, with **circle color** representing **Uncertainty (LATU)** and a fixed radius. This lets us compare size vs. color encoding.  
-- **Chart 3 (`#chart3`)**: Line chart of **Land+Ocean Average Temperature (LOAT)** vs **Time**, with an additional **12-month rolling average** overlay. This highlights long-term warming trends beyond seasonal fluctuations.  
+- **Extra Practice Chart 2 (`#chart2`)**: Scatterplot of **Land Average Temperature (y)** vs **Time (x)**, with **circle color** representing **Uncertainty (LATU)** and a fixed radius. This lets us compare size vs. color encoding.  
+- **Extra Practice Chart 3 (`#chart3`)**: Line chart of **Land+Ocean Average Temperature (LOAT)** vs **Time**, with an additional **12-month rolling average** overlay. This highlights long-term warming trends beyond seasonal fluctuations.  
 
-Tooltips display the exact date, temperature, and uncertainty when hovering over points. Axes and gridlines help interpret values clearly.
+<!-- Tooltips display the exact date, temperature, and uncertainty when hovering over points. Axes and gridlines help interpret values clearly. -->
 
 ---
 
@@ -77,8 +61,6 @@ I added an **optional background image** (e.g., a semi-transparent world map) to
 ---
 ## Extra Credit (+5%)
 
-For the extra credit, I added a semi-transparent **Natural Earth “Gray Earth” raster map** as a background image behind the scatterplot in Chart 1.
-
 ### Why it helps
 - The world map reinforces that the dataset is about **global climate patterns**, not just regional values.  
 - It adds intuitive **geographic context**, making the chart feel more meaningful and memorable.  
@@ -89,5 +71,4 @@ For the extra credit, I added a semi-transparent **Natural Earth “Gray Earth�
 - If the map were too dark, colorful, or detailed, it would reduce the **legibility** of points and gridlines.  
 - Viewers might mistakenly look for **spatial patterns** on the map, even though the chart only encodes time vs. temperature.
 
-### Mitigation
 To reduce these issues, I used the **Gray Earth raster** (public domain, from Natural Earth) which is neutral and low in detail, and I set the opacity to **~0.18**. This keeps the data marks visually dominant while still providing subtle global context.
