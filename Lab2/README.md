@@ -90,7 +90,7 @@
 <!-- The final interactive visualizations were implemented in **`index.html`** using D3.js: -->
 
 - **Chart 1 (`#chart1`)**: Scatterplot of **Land Average Temperature (y)** vs **Time (x)**, with **circle radius** representing **Uncertainty (LATU)**.  
-- **Extra Practice Chart 2 (`#chart2`)**: Scatterplot of **Land Average Temperature (y)** vs **Time (x)**, with **circle color** representing **Uncertainty (LATU)** and a fixed radius. This lets us compare size vs. color encoding.  
+<!-- - **Extra Practice Chart 2 (`#chart2`)**: Scatterplot of **Land Average Temperature (y)** vs **Time (x)**, with **circle color** representing **Uncertainty (LATU)** and a fixed radius. This lets us compare size vs. color encoding.  
 - **Extra Practice Chart 3 (`#chart3`)**: Line chart of **Land+Ocean Average Temperature (LOAT)** vs **Time**, with an additional **12-month rolling average** overlay. This highlights long-term warming trends beyond seasonal fluctuations.   -->
 <!-- Tooltips display the exact date, temperature, and uncertainty when hovering over points. Axes and gridlines help interpret values clearly. -->
 
