@@ -2,8 +2,6 @@
 
 ## Sketches (30%)
 
-Before coding, I created several paper sketches to explore possible visualizations. Quantity and multivariate exploration were prioritized over polish. Each sketch addresses a specific question:
-
 1. **Scatterplot (Time vs. LAT, radius = LATU)**  
    - *Question:* How has global land temperature changed over time, and when was uncertainty higher or lower?  
    - *Why:* The y-axis shows temperature levels, the x-axis shows time, and the circle radius represents uncertainty.
@@ -35,8 +33,8 @@ Before coding, I created several paper sketches to explore possible visualizatio
 <!-- The final interactive visualizations were implemented in **`index.html`** using D3.js: -->
 
 - **Chart 1 (`#chart1`)**: Scatterplot of **Land Average Temperature (y)** vs **Time (x)**, with **circle radius** representing **Uncertainty (LATU)**.  
-- **Extra Practice Chart 2 (`#chart2`)**: Scatterplot of **Land Average Temperature (y)** vs **Time (x)**, with **circle color** representing **Uncertainty (LATU)** and a fixed radius. This lets us compare size vs. color encoding.  
-- **Extra Practice Chart 3 (`#chart3`)**: Line chart of **Land+Ocean Average Temperature (LOAT)** vs **Time**, with an additional **12-month rolling average** overlay. This highlights long-term warming trends beyond seasonal fluctuations.  
+<!-- - **Extra Practice Chart 2 (`#chart2`)**: Scatterplot of **Land Average Temperature (y)** vs **Time (x)**, with **circle color** representing **Uncertainty (LATU)** and a fixed radius. This lets us compare size vs. color encoding.  
+- **Extra Practice Chart 3 (`#chart3`)**: Line chart of **Land+Ocean Average Temperature (LOAT)** vs **Time**, with an additional **12-month rolling average** overlay. This highlights long-term warming trends beyond seasonal fluctuations.   -->
 
 <!-- Tooltips display the exact date, temperature, and uncertainty when hovering over points. Axes and gridlines help interpret values clearly. -->
 
@@ -55,7 +53,7 @@ I added an **optional background image** (e.g., a semi-transparent world map) to
      ```bash
      python -m http.server 8000
      ```  
-     Then open [http://localhost:8000](http://localhost:8000) in your browser.
+     Then open [http://localhost:8000/index.html](http://localhost:8000/index.html) in your browser.
 3. Interact with the scatterplots: hover over points to see exact values.
 
 ---

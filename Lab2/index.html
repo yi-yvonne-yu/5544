@@ -34,16 +34,53 @@
   </style>
 </head>
 <body>
+    <section id="sketches" class="card">
+  <h2>Sketches (30%)</h2>
+  
+  <ol>
+    <li>
+      <h3>Scatterplot (Time vs. LAT, radius = LATU)</h3>
+      <p><em>Question:</em> How has global land temperature changed over time, and when was uncertainty higher or lower?</p>
+      <p><em>Why:</em> The y-axis shows temperature levels, the x-axis shows time, and the circle radius represents uncertainty.</p>
+    </li>
+    <li>
+      <h3>Scatterplot (Time vs. LAT, color = LATU, fixed radius)</h3>
+      <p><em>Question:</em> Do years with high uncertainty cluster in particular periods?</p>
+      <p><em>Why:</em> Color encodes uncertainty, letting us trace temperature changes more clearly over time.</p>
+    </li>
+    <li>
+      <h3>Line Chart (Time vs. LOAT)</h3>
+      <p><em>Question:</em> What is the overall trend in combined land + ocean temperature over the years?</p>
+      <p><em>Why:</em> Continuous lines emphasize long-term changes and reveal warming patterns.</p>
+    </li>
+    <li>
+      <h3>Line Chart with Rolling Average Overlay (12-month mean)</h3>
+      <p><em>Question:</em> What long-term trends emerge if we smooth seasonal fluctuations in temperature data?</p>
+      <p><em>Why:</em> Adding a moving average line makes gradual warming trends easier to see.</p>
+    </li>
+    <li>
+      <h3>Scatterplot with Dual Encoding (Time vs. LAT, radius = LATU, color = LOAT)</h3>
+      <p><em>Question:</em> How do land and land+ocean temperatures evolve together, and does uncertainty vary by period?</p>
+      <p><em>Why:</em> Size shows uncertainty while color shows land+ocean temperature, enabling multivariate comparison.</p>
+    </li>
+    <li>
+      <h3>Small Multiples by Decade (LAT vs. Time for each decade)</h3>
+      <p><em>Question:</em> How do temperature and uncertainty patterns differ across decades?</p>
+      <p><em>Why:</em> Side-by-side plots highlight changes in variability and distribution over time.</p>
+    </li>
+  </ol>
+</section>
+
   <h1>D3 Scatterplot & Variations — Global Temperatures</h1>
 
   <h2>Chart 1 — Scatter: y=LandAverageTemperature (LAT), x=Time, r=Uncertainty (LATU)</h2>
   <div id="chart1" class="card"><svg class="chart" role="img" aria-label="Scatterplot LAT vs Time (radius=LATU)"></svg></div>
 
-  <h2>Chart 2 — Scatter: y=LAT, x=Time, <em>color</em>=Uncertainty (LATU), fixed radius</h2>
+  <!-- <h2>Chart 2 — Scatter: y=LAT, x=Time, <em>color</em>=Uncertainty (LATU), fixed radius</h2>
   <div id="chart2" class="card"><svg class="chart" role="img" aria-label="Scatterplot LAT vs Time (color=LATU)"></svg></div>
 
   <h2>Chart 3 — Lines: y=Land+Ocean Temperature (LOAT), x=Time, with 12-mo rolling mean</h2>
-  <div id="chart3" class="card"><svg class="chart" role="img" aria-label="Line chart LOAT vs Time with rolling mean"></svg></div>
+  <div id="chart3" class="card"><svg class="chart" role="img" aria-label="Line chart LOAT vs Time with rolling mean"></svg></div> -->
 
   <!-- D3 v7 -->
   <script src="https://cdn.jsdelivr.net/npm/d3@7"></script>
@@ -152,128 +189,128 @@
         .on("mouseleave", () => tip.style("opacity",0));
     })();
 
-    // ===== Chart 2: Scatter (color = uncertainty; fixed radius) =====
-    (function(){
-      const {svg, g, iw, ih, gridX, gridY} = setupFrame(d3.select("#chart2 .chart"));
-      const x = d3.scaleTime().domain(timeExtent).range([0, iw]);
-      const y = d3.scaleLinear().domain(d3.extent(data, d => d.LAT)).nice().range([ih, 0]);
-      const c = d3.scaleSequential(d3.extent(data, d => d.LATU), d3.interpolateTurbo); // uncertainty -> color
+    // // ===== Chart 2: Scatter (color = uncertainty; fixed radius) =====
+    // (function(){
+    //   const {svg, g, iw, ih, gridX, gridY} = setupFrame(d3.select("#chart2 .chart"));
+    //   const x = d3.scaleTime().domain(timeExtent).range([0, iw]);
+    //   const y = d3.scaleLinear().domain(d3.extent(data, d => d.LAT)).nice().range([ih, 0]);
+    //   const c = d3.scaleSequential(d3.extent(data, d => d.LATU), d3.interpolateTurbo); // uncertainty -> color
 
-      g.append("g").attr("class","grid").attr("transform",`translate(0,${ih})`)
-        .call(gridX(x).tickSize(-ih).tickFormat(""));
-      g.append("g").attr("class","grid").call(gridY(y).tickSize(-iw).tickFormat(""));
+    //   g.append("g").attr("class","grid").attr("transform",`translate(0,${ih})`)
+    //     .call(gridX(x).tickSize(-ih).tickFormat(""));
+    //   g.append("g").attr("class","grid").call(gridY(y).tickSize(-iw).tickFormat(""));
 
-      g.append("g").attr("class","axis").attr("transform",`translate(0,${ih})`).call(d3.axisBottom(x));
-      g.append("g").attr("class","axis").call(d3.axisLeft(y));
+    //   g.append("g").attr("class","axis").attr("transform",`translate(0,${ih})`).call(d3.axisBottom(x));
+    //   g.append("g").attr("class","axis").call(d3.axisLeft(y));
 
-      g.append("text").attr("class","axis-label").attr("x", iw/2).attr("y", ih+42)
-        .attr("text-anchor","middle").text("Time (Date)");
-      g.append("text").attr("class","axis-label").attr("transform","rotate(-90)")
-        .attr("x", -ih/2).attr("y", -46).attr("text-anchor","middle")
-        .text("Land Average Temperature (°C)");
+    //   g.append("text").attr("class","axis-label").attr("x", iw/2).attr("y", ih+42)
+    //     .attr("text-anchor","middle").text("Time (Date)");
+    //   g.append("text").attr("class","axis-label").attr("transform","rotate(-90)")
+    //     .attr("x", -ih/2).attr("y", -46).attr("text-anchor","middle")
+    //     .text("Land Average Temperature (°C)");
 
-      const R = 3.5; // fixed
-      g.selectAll(".dot2")
-        .data(data)
-        .enter()
-        .append("circle")
-        .attr("class","dot2")
-        .attr("cx", d => x(d.t))
-        .attr("cy", d => y(d.LAT))
-        .attr("r",  R)
-        .attr("fill", d => c(d.LATU))
-        .on("mouseenter", (ev, d) => {
-          tip.style("opacity",1).html(
-            `<strong>${d.t.toISOString().slice(0,10)}</strong><br/>
-             LAT: <strong>${d.LAT.toFixed(2)} °C</strong><br/>
-             LATU: <strong>${d.LATU.toFixed(3)}</strong>`
-          );
-        })
-        .on("mousemove", ev => tip.style("left",(ev.pageX+12)+"px").style("top",(ev.pageY-28)+"px"))
-        .on("mouseleave", () => tip.style("opacity",0));
+    //   const R = 3.5; // fixed
+    //   g.selectAll(".dot2")
+    //     .data(data)
+    //     .enter()
+    //     .append("circle")
+    //     .attr("class","dot2")
+    //     .attr("cx", d => x(d.t))
+    //     .attr("cy", d => y(d.LAT))
+    //     .attr("r",  R)
+    //     .attr("fill", d => c(d.LATU))
+    //     .on("mouseenter", (ev, d) => {
+    //       tip.style("opacity",1).html(
+    //         `<strong>${d.t.toISOString().slice(0,10)}</strong><br/>
+    //          LAT: <strong>${d.LAT.toFixed(2)} °C</strong><br/>
+    //          LATU: <strong>${d.LATU.toFixed(3)}</strong>`
+    //       );
+    //     })
+    //     .on("mousemove", ev => tip.style("left",(ev.pageX+12)+"px").style("top",(ev.pageY-28)+"px"))
+    //     .on("mouseleave", () => tip.style("opacity",0));
 
-      // Simple color legend (min -> max uncertainty)
-      const [uMin, uMax] = d3.extent(data, d => d.LATU);
-      const Lw = 160, Lh = 12;
-      const lg = g.append("g").attr("class","legend").attr("transform",`translate(${iw- Lw - 8}, ${8})`);
-      const gradId = "uncGrad";
-      const defs = svg.append("defs");
-      const grad = defs.append("linearGradient").attr("id", gradId).attr("x1","0%").attr("x2","100%").attr("y1","0%").attr("y2","0%");
-      const stops = d3.range(0,1.001,0.1);
-      stops.forEach(t => grad.append("stop").attr("offset", (t*100)+"%").attr("stop-color", c(uMin + t*(uMax-uMin))));
-      lg.append("rect").attr("x",0).attr("y",0).attr("width",Lw).attr("height",Lh).attr("fill",`url(#${gradId})`);
-      lg.append("text").attr("x",0).attr("y",Lh+12).text(uMin.toFixed(2));
-      lg.append("text").attr("x",Lw).attr("y",Lh+12).attr("text-anchor","end").text(uMax.toFixed(2));
-      lg.append("text").attr("x",Lw/2).attr("y",-4).attr("text-anchor","middle").text("Uncertainty (LATU)");
-    })();
+    //   // Simple color legend (min -> max uncertainty)
+    //   const [uMin, uMax] = d3.extent(data, d => d.LATU);
+    //   const Lw = 160, Lh = 12;
+    //   const lg = g.append("g").attr("class","legend").attr("transform",`translate(${iw- Lw - 8}, ${8})`);
+    //   const gradId = "uncGrad";
+    //   const defs = svg.append("defs");
+    //   const grad = defs.append("linearGradient").attr("id", gradId).attr("x1","0%").attr("x2","100%").attr("y1","0%").attr("y2","0%");
+    //   const stops = d3.range(0,1.001,0.1);
+    //   stops.forEach(t => grad.append("stop").attr("offset", (t*100)+"%").attr("stop-color", c(uMin + t*(uMax-uMin))));
+    //   lg.append("rect").attr("x",0).attr("y",0).attr("width",Lw).attr("height",Lh).attr("fill",`url(#${gradId})`);
+    //   lg.append("text").attr("x",0).attr("y",Lh+12).text(uMin.toFixed(2));
+    //   lg.append("text").attr("x",Lw).attr("y",Lh+12).attr("text-anchor","end").text(uMax.toFixed(2));
+    //   lg.append("text").attr("x",Lw/2).attr("y",-4).attr("text-anchor","middle").text("Uncertainty (LATU)");
+    // })();
 
-    // ===== Chart 3: Lines (LOAT + 12-mo rolling mean) =====
-    (function(){
-      const {svg, g, iw, ih, gridX, gridY} = setupFrame(d3.select("#chart3 .chart"));
-      const x = d3.scaleTime().domain(timeExtent).range([0, iw]);
-      const y = d3.scaleLinear().domain(d3.extent(data, d => d.LOAT)).nice().range([ih, 0]);
+    // // ===== Chart 3: Lines (LOAT + 12-mo rolling mean) =====
+    // (function(){
+    //   const {svg, g, iw, ih, gridX, gridY} = setupFrame(d3.select("#chart3 .chart"));
+    //   const x = d3.scaleTime().domain(timeExtent).range([0, iw]);
+    //   const y = d3.scaleLinear().domain(d3.extent(data, d => d.LOAT)).nice().range([ih, 0]);
 
-      g.append("g").attr("class","grid").attr("transform",`translate(0,${ih})`)
-        .call(gridX(x).tickSize(-ih).tickFormat(""));
-      g.append("g").attr("class","grid").call(gridY(y).tickSize(-iw).tickFormat(""));
+    //   g.append("g").attr("class","grid").attr("transform",`translate(0,${ih})`)
+    //     .call(gridX(x).tickSize(-ih).tickFormat(""));
+    //   g.append("g").attr("class","grid").call(gridY(y).tickSize(-iw).tickFormat(""));
 
-      g.append("g").attr("class","axis").attr("transform",`translate(0,${ih})`).call(d3.axisBottom(x));
-      g.append("g").attr("class","axis").call(d3.axisLeft(y));
+    //   g.append("g").attr("class","axis").attr("transform",`translate(0,${ih})`).call(d3.axisBottom(x));
+    //   g.append("g").attr("class","axis").call(d3.axisLeft(y));
 
-      g.append("text").attr("class","axis-label").attr("x", iw/2).attr("y", ih+42)
-        .attr("text-anchor","middle").text("Time (Date)");
-      g.append("text").attr("class","axis-label").attr("transform","rotate(-90)")
-        .attr("x", -ih/2).attr("y", -46).attr("text-anchor","middle")
-        .text("Land + Ocean Temperature (°C)");
+    //   g.append("text").attr("class","axis-label").attr("x", iw/2).attr("y", ih+42)
+    //     .attr("text-anchor","middle").text("Time (Date)");
+    //   g.append("text").attr("class","axis-label").attr("transform","rotate(-90)")
+    //     .attr("x", -ih/2).attr("y", -46).attr("text-anchor","middle")
+    //     .text("Land + Ocean Temperature (°C)");
 
-      // Line generators
-      const line = d3.line().x(d => x(d.t)).y(d => y(d.LOAT));
-      const LOAT_series = data.map(d => ({t:d.t, LOAT:d.LOAT}));
+    //   // Line generators
+    //   const line = d3.line().x(d => x(d.t)).y(d => y(d.LOAT));
+    //   const LOAT_series = data.map(d => ({t:d.t, LOAT:d.LOAT}));
 
-      // Rolling mean
-      const meanVals = rollingMean(data.map(d => d.LOAT), 12);
-      const meanSeries = data.map((d,i) => ({t:d.t, mean: meanVals[i]})).filter(d => Number.isFinite(d.mean));
-      const meanLine = d3.line().x(d=>x(d.t)).y(d=>y(d.mean));
+    //   // Rolling mean
+    //   const meanVals = rollingMean(data.map(d => d.LOAT), 12);
+    //   const meanSeries = data.map((d,i) => ({t:d.t, mean: meanVals[i]})).filter(d => Number.isFinite(d.mean));
+    //   const meanLine = d3.line().x(d=>x(d.t)).y(d=>y(d.mean));
 
-      // Path for raw monthly LOAT
-      g.selectAll(".series-line")
-        .data([LOAT_series])
-        .enter()
-        .append("path")
-        .attr("class","series-line")
-        .attr("stroke","#6d94ff")
-        .attr("d", line);
+    //   // Path for raw monthly LOAT
+    //   g.selectAll(".series-line")
+    //     .data([LOAT_series])
+    //     .enter()
+    //     .append("path")
+    //     .attr("class","series-line")
+    //     .attr("stroke","#6d94ff")
+    //     .attr("d", line);
 
-      // Points for monthly LOAT (subtle)
-      g.append("g").attr("class","series-pts")
-        .selectAll("circle")
-        .data(LOAT_series)
-        .enter()
-        .append("circle")
-        .attr("r",1.5)
-        .attr("cx", d=>x(d.t))
-        .attr("cy", d=>y(d.LOAT));
+    //   // Points for monthly LOAT (subtle)
+    //   g.append("g").attr("class","series-pts")
+    //     .selectAll("circle")
+    //     .data(LOAT_series)
+    //     .enter()
+    //     .append("circle")
+    //     .attr("r",1.5)
+    //     .attr("cx", d=>x(d.t))
+    //     .attr("cy", d=>y(d.LOAT));
 
-      // Rolling 12-mo mean
-      g.selectAll(".series-mean")
-        .data([meanSeries])
-        .enter()
-        .append("path")
-        .attr("class","series-mean")
-        .attr("stroke","#e24a33")
-        .attr("d", meanLine);
+    //   // Rolling 12-mo mean
+    //   g.selectAll(".series-mean")
+    //     .data([meanSeries])
+    //     .enter()
+    //     .append("path")
+    //     .attr("class","series-mean")
+    //     .attr("stroke","#e24a33")
+    //     .attr("d", meanLine);
 
-      // Tooltip on hover over points
-      g.selectAll(".series-pts circle")
-        .on("mouseenter", (ev, d) => {
-          tip.style("opacity",1).html(
-            `<strong>${d.t.toISOString().slice(0,10)}</strong><br/>
-             LOAT: <strong>${d.LOAT.toFixed(2)} °C</strong>`
-          );
-        })
-        .on("mousemove", ev => tip.style("left",(ev.pageX+12)+"px").style("top",(ev.pageY-28)+"px"))
-        .on("mouseleave", () => tip.style("opacity",0));
-    })();
+    //   // Tooltip on hover over points
+    //   g.selectAll(".series-pts circle")
+    //     .on("mouseenter", (ev, d) => {
+    //       tip.style("opacity",1).html(
+    //         `<strong>${d.t.toISOString().slice(0,10)}</strong><br/>
+    //          LOAT: <strong>${d.LOAT.toFixed(2)} °C</strong>`
+    //       );
+    //     })
+    //     .on("mousemove", ev => tip.style("left",(ev.pageX+12)+"px").style("top",(ev.pageY-28)+"px"))
+    //     .on("mouseleave", () => tip.style("opacity",0));
+    // })();
   });
   </script>
 </body>
