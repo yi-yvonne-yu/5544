@@ -34,43 +34,6 @@
   </style>
 </head>
 <body>
-    <section id="sketches" class="card">
-  <h2>Sketches (30%)</h2>
-  
-  <ol>
-    <li>
-      <h3>Scatterplot (Time vs. LAT, radius = LATU)</h3>
-      <p><em>Question:</em> How has global land temperature changed over time, and when was uncertainty higher or lower?</p>
-      <p><em>Why:</em> The y-axis shows temperature levels, the x-axis shows time, and the circle radius represents uncertainty.</p>
-    </li>
-    <li>
-      <h3>Scatterplot (Time vs. LAT, color = LATU, fixed radius)</h3>
-      <p><em>Question:</em> Do years with high uncertainty cluster in particular periods?</p>
-      <p><em>Why:</em> Color encodes uncertainty, letting us trace temperature changes more clearly over time.</p>
-    </li>
-    <li>
-      <h3>Line Chart (Time vs. LOAT)</h3>
-      <p><em>Question:</em> What is the overall trend in combined land + ocean temperature over the years?</p>
-      <p><em>Why:</em> Continuous lines emphasize long-term changes and reveal warming patterns.</p>
-    </li>
-    <li>
-      <h3>Line Chart with Rolling Average Overlay (12-month mean)</h3>
-      <p><em>Question:</em> What long-term trends emerge if we smooth seasonal fluctuations in temperature data?</p>
-      <p><em>Why:</em> Adding a moving average line makes gradual warming trends easier to see.</p>
-    </li>
-    <li>
-      <h3>Scatterplot with Dual Encoding (Time vs. LAT, radius = LATU, color = LOAT)</h3>
-      <p><em>Question:</em> How do land and land+ocean temperatures evolve together, and does uncertainty vary by period?</p>
-      <p><em>Why:</em> Size shows uncertainty while color shows land+ocean temperature, enabling multivariate comparison.</p>
-    </li>
-    <li>
-      <h3>Small Multiples by Decade (LAT vs. Time for each decade)</h3>
-      <p><em>Question:</em> How do temperature and uncertainty patterns differ across decades?</p>
-      <p><em>Why:</em> Side-by-side plots highlight changes in variability and distribution over time.</p>
-    </li>
-  </ol>
-</section>
-
   <h1>D3 Scatterplot & Variations — Global Temperatures</h1>
 
   <h2>Chart 1 — Scatter: y=LandAverageTemperature (LAT), x=Time, r=Uncertainty (LATU)</h2>

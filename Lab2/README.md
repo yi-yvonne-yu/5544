@@ -5,26 +5,83 @@
 1. **Scatterplot (Time vs. LAT, radius = LATU)**  
    - *Question:* How has global land temperature changed over time, and when was uncertainty higher or lower?  
    - *Why:* The y-axis shows temperature levels, the x-axis shows time, and the circle radius represents uncertainty.
+   
+   LAT
+    ^
+    |        o          o
+    |     o      O         o
+    |  o       o     O
+    |       O        o
+    +--------------------------------> Time
+        1900    1950    2000    2050
 
 2. **Scatterplot (Time vs. LAT, color = LATU, fixed radius)**  
    - *Question:* Do years with high uncertainty cluster in particular periods?  
    - *Why:* Color encodes uncertainty, letting us trace temperature changes more clearly over time.
 
+   LAT
+    ^
+    |     ●      ○      ●
+    |  ○      ●      ○
+    |      ○      ●      ●
+    |  ●       ○
+    +----------------------------------> Time
+        
 3. **Line Chart (Time vs. LOAT)**  
    - *Question:* What is the overall trend in combined land + ocean temperature over the years?  
    - *Why:* Continuous lines emphasize long-term changes and reveal warming patterns.
+   
+   LOAT
+    ^
+    |        *
+    |      *   *
+    |    *       *
+    |   *          *
+    |  *             *
+    | *                *
+    +----------------------------------> Time
 
 4. **Line Chart with Rolling Average Overlay (12-month mean)**  
    - *Question:* What long-term trends emerge if we smooth seasonal fluctuations in temperature data?  
    - *Why:* Adding a moving average line makes gradual warming trends easier to see.
 
+   LOAT
+    ^
+    |        *   *   *   *        (raw monthly data, jagged line)
+    |      *   *   *   * 
+    |    *   *   *   *   
+    |   *    *    *     *
+    |  -------------------      (smooth rolling average)
+    | *                         *
+    +----------------------------------> Time
+
 5. **Scatterplot with Dual Encoding (Time vs. LAT, radius = LATU, color = LOAT)**  
    - *Question:* How do land and land+ocean temperatures evolve together, and does uncertainty vary by period?  
    - *Why:* Size shows uncertainty while color shows land+ocean temperature, enabling multivariate comparison.
+   
+   LAT
+    ^
+    |        ◯        ⬤
+    |   ⬤        ◯        ◯
+    |      ◯          ⬤
+    |  ⬤       ◯
+    +----------------------------------> Time
 
 6. **Small Multiples by Decade (LAT vs Time for each decade)**  
    - *Question:* How do temperature and uncertainty patterns differ across decades?  
    - *Why:* Side-by-side plots highlight changes in variability and distribution over time.
+
+    [1900s]                [1910s]                [1920s]
+    Y                      Y                      Y
+    ^   o   o   o          ^   o  O   o           ^    o   o   O
+    |                      |                      |
+    +--------> Time        +--------> Time        +--------> Time
+
+    [1930s]                [1940s]                [1950s]
+    Y                      Y                      Y
+    ^   O   o   o          ^   o   o   O          ^   o   O   o
+    |                      |                      |
+    +--------> Time        +--------> Time        +--------> Time
 
 ---
 
@@ -33,9 +90,8 @@
 <!-- The final interactive visualizations were implemented in **`index.html`** using D3.js: -->
 
 - **Chart 1 (`#chart1`)**: Scatterplot of **Land Average Temperature (y)** vs **Time (x)**, with **circle radius** representing **Uncertainty (LATU)**.  
-<!-- - **Extra Practice Chart 2 (`#chart2`)**: Scatterplot of **Land Average Temperature (y)** vs **Time (x)**, with **circle color** representing **Uncertainty (LATU)** and a fixed radius. This lets us compare size vs. color encoding.  
+- **Extra Practice Chart 2 (`#chart2`)**: Scatterplot of **Land Average Temperature (y)** vs **Time (x)**, with **circle color** representing **Uncertainty (LATU)** and a fixed radius. This lets us compare size vs. color encoding.  
 - **Extra Practice Chart 3 (`#chart3`)**: Line chart of **Land+Ocean Average Temperature (LOAT)** vs **Time**, with an additional **12-month rolling average** overlay. This highlights long-term warming trends beyond seasonal fluctuations.   -->
-
 <!-- Tooltips display the exact date, temperature, and uncertainty when hovering over points. Axes and gridlines help interpret values clearly. -->
 
 ---
