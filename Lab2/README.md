@@ -95,24 +95,6 @@
 <!-- Tooltips display the exact date, temperature, and uncertainty when hovering over points. Axes and gridlines help interpret values clearly. -->
 
 ---
-
-## Extra Credit (+5%)
-
-I added an **optional background image** (e.g., a semi-transparent world map) to **Chart 1**. This image provides geographic context, reminding viewers that the data represent global land temperatures. However, if the image is too saturated, it can distract from the scatterplot marks. To avoid this, I kept the background semi-transparent so that the data remain visually dominant.
-
----
-
-## How to Run
-1. Place `index.html` and `GlobalTemperatures.json` in the same folder.
-2. Run a local server (needed because browsers block local JSON loads):  
-   - **Python 3:**  
-     ```bash
-     python -m http.server 8000
-     ```  
-     Then open [http://localhost:8000/index.html](http://localhost:8000/index.html) in your browser.
-3. Interact with the scatterplots: hover over points to see exact values.
-
----
 ## Extra Credit (+5%)
 
 ### Why it helps
@@ -126,3 +108,16 @@ I added an **optional background image** (e.g., a semi-transparent world map) to
 - Viewers might mistakenly look for **spatial patterns** on the map, even though the chart only encodes time vs. temperature.
 
 To reduce these issues, I used the **Gray Earth raster** (public domain, from Natural Earth) which is neutral and low in detail, and I set the opacity to **~0.18**. This keeps the data marks visually dominant while still providing subtle global context.
+
+
+---
+
+## How to Run
+1. Place `index.html` and `GlobalTemperatures.json` in the same folder.
+2. Run a local server (needed because browsers block local JSON loads):  
+   - **Python 3:**  
+     ```bash
+     python -m http.server 8000
+     ```  
+     Then open [http://localhost:8000/index.html](http://localhost:8000/index.html) in your browser.
+3. Interact with the scatterplots: hover over points to see exact values.
