@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>D3 Scales — Global Temperatures (LAT vs Time, color = LATU)</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    :root { --grid:#e8e8e8; --ink:#222; --muted:#666; --accent:#2a78ff; }
+    body { margin:0; padding:18px; font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif; color:var(--ink); }
+    h1 { margin:0 0 6px; font-size:1.15rem; }
+    p  { margin:0 0 10px; color:var(--muted); }
+    .controls { display:flex; gap:8px; flex-wrap:wrap; margin:10px 0 14px; }
+    button {
+      border:1px solid #ddd; background:#fff; padding:8px 10px; border-radius:8px; cursor:pointer;
+      box-shadow:0 1px 3px rgba(0,0,0,.06); font-size:14px;
+    }
+    button.active { border-color:#2a78ff; color:#2a78ff; box-shadow:0 0 0 2px rgba(42,120,255,.15) inset; }
+    .card { border:1px solid #eee; border-radius:10px; padding:10px; margin:8px 0; box-shadow:0 1px 4px rgba(0,0,0,.04); }
+    .chart { width:100%; height:520px; display:block; }
+    .axis path,.axis line{ stroke:#aaa; }
+    .grid line{ stroke:var(--grid); }
+    .axis-label{ fill:var(--muted); font-size:12px; }
+    .dot { stroke:#000; stroke-opacity:.2; fill-opacity:.95; }
+    .tooltip{
+      position:absolute; pointer-events:none; background:#fff; border:1px solid #ddd;
+      border-radius:8px; padding:6px 8px; font-size:12px; box-shadow:0 2px 10px rgba(0,0,0,.08);
+    }
+    .legend { font-size:12px; fill:#333; }
+    .legend .swatch { shape-rendering:crispEdges; }
+  </style>
+</head>
+<body>
+  <h1>D3 Scatterplot — Time vs. LAT (color = LATU)</h1>
+  <!-- <p>Use the buttons to switch colormaps. Points show <strong>Land Average Temperature (LAT)</strong> over time; color encodes <strong>uncertainty (LATU)</strong>.</p> -->
+
+  <div class="controls">
+    <button id="colormap-button-1" class="active">1) Linear: red → green</button>
+    <button id="colormap-button-2">2) Min/Mean/Max: RdYlGn (#d7191c → #ffffbf → #1a9641)</button>
+    <button id="colormap-button-3">3) Quantize (5 bands: RdYlGn-5)</button>
+  </div>
+
+  <div class="card">
+    <svg id="chart" class="chart" role="img" aria-label="Scatterplot LAT vs Time (color=LATU)"></svg>
+  </div>
+
+  <!-- D3 v7 -->
+  <script src="https://cdn.jsdelivr.net/npm/d3@7"></script>
+  <script>
+  // ---------------- Helpers ----------------
+  function parseYYYYMMDD(n){
+    // Input like 18500101 -> Date(1850, 0, 1)
+    const s = String(n);
+    const y = +s.slice(0,4), m = +s.slice(4,6) - 1, d = +s.slice(6,8);
+    return new Date(y, m, d);
+  }
+
+  // Robust loader for the file format described in the prompt
+  // It can be either a raw array or an object { temperature: [...] }
+  function normalizeRows(raw){
+    if (Array.isArray(raw)) return raw;
+    if (raw && Array.isArray(raw.temperature)) return raw.temperature;
+    if (raw && Array.isArray(raw.temperatures)) return raw.temperatures;
+    // Fallback: try a top-level var-like wrapper string (if someone pasted JS)
+    // Otherwise return empty.
+    return [];
+  }
+
+  function setupFrame(svgSel){
+    const svg = svgSel;
+    const vb = svg.node().getBoundingClientRect();
+    const width  = Math.max(760, vb.width  || 760);
+    const height = Math.max(460, vb.height || 520);
+    const m = {top:20, right:32, bottom:58, left:64};
+    const iw = width - m.left - m.right;
+    const ih = height - m.top - m.bottom;
+
+    svg.attr("viewBox",`0 0 ${width} ${height}`).attr("preserveAspectRatio","xMidYMid meet");
+    const g = svg.append("g").attr("transform",`translate(${m.left},${m.top})`);
+
+    const gridX = s => d3.axisBottom(s).ticks(10);
+    const gridY = s => d3.axisLeft(s).ticks(6);
+
+    return {svg, g, width, height, m, iw, ih, gridX, gridY};
+  }
+
+  // ---------------- Main ----------------
+  const svg = d3.select("#chart");
+  const { g, iw, ih, gridX, gridY } = setupFrame(svg);
+
+  // Shared tooltip
+  const tip = d3.select("body").append("div").attr("class","tooltip").style("opacity",0);
+
+  // Legend container (updates per colormap)
+  const legendG = g.append("g").attr("class","legend").attr("transform", `translate(${iw - 210}, 8)`);
+
+  // Load data and draw
+  d3.json("GlobalTemperatures.json").then(raw => {
+    const rows = normalizeRows(raw);
+
+    const data = rows.map(d => ({
+      t: parseYYYYMMDD(d.time),
+      LAT: +d.LAT,
+      LATU: +d.LATU,
+      LOAT: +d.LOAT,
+      LOATU: +d.LOATU
+    })).filter(d => d.t && Number.isFinite(d.LAT) && Number.isFinite(d.LATU));
+
+    // Scales
+    const timeExtent = d3.extent(data, d => d.t);
+    const x = d3.scaleTime().domain(timeExtent).range([0, iw]);
+    const y = d3.scaleLinear().domain(d3.extent(data, d => d.LAT)).nice().range([ih, 0]);
+
+    // Axes + grid
+    g.append("g").attr("class","grid").attr("transform",`translate(0,${ih})`)
+      .call(gridX(x).tickSize(-ih).tickFormat(""));
+    g.append("g").attr("class","grid").call(gridY(y).tickSize(-iw).tickFormat(""));
+
+    g.append("g").attr("class","axis").attr("transform",`translate(0,${ih})`).call(d3.axisBottom(x));
+    g.append("g").attr("class","axis").call(d3.axisLeft(y));
+
+    g.append("text").attr("class","axis-label").attr("x", iw/2).attr("y", ih+42)
+      .attr("text-anchor","middle").text("Time (Date)");
+    g.append("text").attr("class","axis-label").attr("transform","rotate(-90)")
+      .attr("x", -ih/2).attr("y", -48).attr("text-anchor","middle")
+      .text("Land Average Temperature (LAT, °C)");
+
+    // Draw points (fixed radius; color will be assigned by selected colormap)
+    const R = 3.5;
+    const pts = g.append("g")
+      .selectAll(".dot")
+      .data(data)
+      .join("circle")
+      .attr("class","dot")
+      .attr("r", R)
+      .attr("cx", d => x(d.t))                 // <- matches your "cx SOME CODE HERE"
+      .attr("cy", d => y(d.LAT))               // <- matches your "cy SOME CODE HERE"
+      .on("mouseenter", (ev, d) => {
+        tip.style("opacity",1).html(
+          `<strong>${d.t.toISOString().slice(0,10)}</strong><br/>
+           LAT: <strong>${d.LAT.toFixed(2)} °C</strong><br/>
+           LATU: <strong>${d.LATU.toFixed(3)}</strong>`
+        );
+      })
+      .on("mousemove", ev => tip.style("left",(ev.pageX+12)+"px").style("top",(ev.pageY-28)+"px"))
+      .on("mouseleave", () => tip.style("opacity",0));
+
+    // --------- Colormaps (LATU domain) ----------
+    const latuExtent = d3.extent(data, d => d.LATU);
+    const latuMin = latuExtent[0], latuMax = latuExtent[1];
+    const latuMean = d3.mean(data, d => d.LATU);
+
+    // Colors: RdYlGn-5 (from ColorBrewer)
+    const RdYlGn5 = ["#d7191c","#fdae61","#ffffbf","#a6d96a","#1a9641"];
+
+    // 1) Linear red → green across [min, max]
+    const cmap1 = d3.scaleLinear()
+      .domain([latuMin, latuMax])
+      .range(["#d7191c", "#1a9641"]);
+
+    // 2) Three-point mapping: min -> #d7191c, mean -> #ffffbf, max -> #1a9641
+    const cmap2 = d3.scaleLinear()
+      .domain([latuMin, latuMean, latuMax])
+      .range(["#d7191c", "#ffffbf", "#1a9641"]);
+
+    // 3) Quantize into 5 bands (min..max)
+    const cmap3 = d3.scaleQuantize()
+      .domain([latuMin, latuMax])
+      .range(RdYlGn5);
+
+    // --------- Legend builders ----------
+    function updateLegendContinuous(scale, {title="Uncertainty (LATU)"} = {}){
+      legendG.selectAll("*").remove();
+
+      const W = 180, H = 12;
+      const gradId = "legend-grad-" + Math.random().toString(36).slice(2);
+
+      const defs = svg.append("defs");
+      const grad = defs.append("linearGradient")
+        .attr("id", gradId).attr("x1","0%").attr("x2","100%").attr("y1","0%").attr("y2","0%");
+
+      // Build gradient by sampling scale from min->max
+      const stops = d3.range(0, 1.0001, 0.1);
+      stops.forEach(t => {
+        const v = latuMin + t * (latuMax - latuMin);
+        grad.append("stop")
+          .attr("offset", (t*100)+"%")
+          .attr("stop-color", scale(v));
+      });
+
+      legendG.append("text").attr("x", W/2).attr("y", -6).attr("text-anchor", "middle").text(title);
+      legendG.append("rect").attr("class","swatch").attr("x", 0).attr("y", 0).attr("width", W).attr("height", H)
+        .attr("fill", `url(#${gradId})`).attr("stroke","#aaa");
+
+      // Ticks: min / mid / max
+      const yOff = H + 12;
+      legendG.append("text").attr("x", 0).attr("y", yOff).text(latuMin.toFixed(2));
+      legendG.append("text").attr("x", W/2).attr("y", yOff).attr("text-anchor","middle").text(((latuMin+latuMax)/2).toFixed(2));
+      legendG.append("text").attr("x", W).attr("y", yOff).attr("text-anchor","end").text(latuMax.toFixed(2));
+    }
+
+    function updateLegendQuantize(scale, {title="Uncertainty (LATU)"} = {}){
+      legendG.selectAll("*").remove();
+      const colors = scale.range();
+      const W = 180, H = 12, pad = 2;
+      const sw = (W - pad*(colors.length-1)) / colors.length;
+
+      legendG.append("text").attr("x", W/2).attr("y", -6).attr("text-anchor", "middle").text(title);
+
+      colors.forEach((c, i) => {
+        legendG.append("rect")
+          .attr("class","swatch")
+          .attr("x", i*(sw+pad))
+          .attr("y", 0)
+          .attr("width", sw)
+          .attr("height", H)
+          .attr("fill", c)
+          .attr("stroke", "#aaa");
+      });
+
+      // Ticks from scale thresholds
+      const [d0, d1] = scale.domain();
+      const thresholds = scale.thresholds ? scale.thresholds() : [];
+      const ticks = [d0, ...thresholds, d1];
+
+      const yOff = H + 12;
+      legendG.append("text").attr("x", 0).attr("y", yOff).text(d0.toFixed(2));
+      legendG.append("text").attr("x", W).attr("y", yOff).attr("text-anchor","end").text(d1.toFixed(2));
+      // Optional: draw small tick markers for internal thresholds (not labeled to keep it clean)
+    }
+
+    // --------- Apply colormap ----------
+    function applyColormap(mode){
+      let fillFn, legendFn;
+
+      if (mode === 1) {
+        fillFn = d => cmap1(d.LATU);
+        legendFn = () => updateLegendContinuous(cmap1, {title:"Uncertainty (LATU) — Linear red→green"});
+      } else if (mode === 2) {
+        fillFn = d => cmap2(d.LATU);
+        legendFn = () => updateLegendContinuous(cmap2, {title:"Uncertainty (LATU) — Min/Mean/Max"});
+      } else {
+        fillFn = d => cmap3(d.LATU);
+        legendFn = () => updateLegendQuantize(cmap3, {title:"Uncertainty (LATU) — Quantize (5 bands)"});
+      }
+
+      pts.transition().duration(400).attr("fill", fillFn);
+      legendFn();
+    }
+
+    // Initial colormap
+    applyColormap(1);
+
+    // Wire buttons
+    const b1 = d3.select("#colormap-button-1");
+    const b2 = d3.select("#colormap-button-2");
+    const b3 = d3.select("#colormap-button-3");
+
+    function setActive(btn){
+      d3.selectAll("button").classed("active", false);
+      btn.classed("active", true);
+    }
+
+    b1.on("click", () => { setActive(b1); applyColormap(1); });
+    b2.on("click", () => { setActive(b2); applyColormap(2); });
+    b3.on("click", () => { setActive(b3); applyColormap(3); });
+  });
+  </script>
+</body>
+</html>
