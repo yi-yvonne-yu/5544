@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <title>D3 Scatterplot — Global Temperatures</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <style>
+        :root { --grid:#e8e8e8; --ink:#222; --muted:#666; --accent:#2a78ff; }
+        body { margin:0; padding:18px; font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif; color:var(--ink); }
+        h1 { margin:0 0 6px; font-size:1.15rem; }
+        .controls { display:flex; gap:8px; flex-wrap:wrap; margin:10px 0 14px; }
+        button {
+            border:1px solid #ddd; background:#fff; padding:8px 10px; border-radius:8px; cursor:pointer;
+            box-shadow:0 1px 3px rgba(0,0,0,.06); font-size:14px;
+        }
+        button.active { border-color:#2a78ff; color:#2a78ff; box-shadow:0 0 0 2px rgba(42,120,255,.15) inset; }
+        #scatterplot_1 { border:1px solid #eee; border-radius:10px; padding:10px; margin:8px 0; box-shadow:0 1px 4px rgba(0,0,0,.04); }
+        .chart { width:100%; height:520px; display:block; }
+        .axis path, .axis line { stroke: #333; fill: none; shape-rendering: crispEdges; }
+        .axis text { fill: #666; font-size: 12px; }
+        .grid line { stroke: var(--grid); stroke-opacity: 0.7; }
+        .axis-label { fill:var(--muted); font-size:12px; }
+        .dot { stroke:#000; stroke-opacity:.2; fill-opacity:.95; }
+        .tooltip{
+            position:absolute; pointer-events:none; background:#fff; border:1px solid #ddd;
+            border-radius:8px; padding:6px 8px; font-size:12px; box-shadow:0 2px 10px rgba(0,0,0,.08);
+        }
+    </style>
+</head>
+<body>
+    <h1>Global Temperature Scatterplot Analysis</h1>
+
+    <div class="controls">
+        <button id="show-assignment" class="active">Show Assignment Results (LAT Y-Axis)</button>
+        <button id="show-extra-credit">Extra Credit (Y-Axis Transition)</button>
+    </div>
+    
+    <div id="extra-credit-controls" class="controls" style="display:none;">
+        <p style="margin:0; margin-right: 15px; font-weight: bold;">Y-Axis Data:</p>
+        <button id="LAT" class="active">LAT (Land Average Temp)</button>
+        <button id="LOAT">LOAT (Cumulative Temp)</button>
+    </div>
+
+    <div id="scatterplot_1">
+        <svg id="chart" class="chart" role="img" aria-label="Scatterplot"></svg>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/d3@7"></script>
+    <script>
+    // ---------------- Helper Functions ----------------
+
+    // Utility to parse time from number (e.g., 18500101) to Date object
+    function parseYYYYMMDD(n){
+        const s = String(n);
+        const y = +s.slice(0,4), m = +s.slice(4,6) - 1, d = +s.slice(6,8);
+        return new Date(y, m, d);
+    }
+
+    // Prepare SVG canvas and margins
+    function setupFrame(svgSel){
+        const svg = svgSel;
+        const vb = svg.node().getBoundingClientRect();
+        const width  = Math.max(760, vb.width  || 760);
+        const height = Math.max(460, vb.height || 520);
+        const m = {top:20, right:32, bottom:58, left:64};
+        const iw = width - m.left - m.right;
+        const ih = height - m.top - m.bottom;
+
+        svg.attr("viewBox",`0 0 ${width} ${height}`).attr("preserveAspectRatio","xMidYMid meet");
+        const g = svg.append("g").attr("transform",`translate(${m.left},${m.top})`);
+
+        return {svg, g, width, height, m, iw, ih};
+    }
+
+    // ---------------- Global Setup ----------------
+    const svg = d3.select("#chart");
+    const { g, iw, ih } = setupFrame(svg);
+
+    const axesG = g.append("g").attr("class", "axes-container");
+    const ptsG = g.append("g").attr("class", "points-container");
+    const tip = d3.select("body").append("div").attr("class","tooltip").style("opacity",0);
+    const legendG = g.append("g").attr("class","legend").attr("transform", `translate(${iw - 210}, 8)`);
+
+    // D3 Scale variables
+    let cxScale; // linear scale for x (numeric YYYYMMDD)
+    let cyScale; // linear scale for y (LAT or LOAT)
+    let rScale;  // sqrt scale for radius (LOATU)
+    let colorScale; // quantize for fill (LATU)
+    
+    // Axis objects
+    let xAxis, yAxis;
+    let xAxisG, yAxisG;
+    let yAxisLabel;
+
+    // Data storage
+    let data;
+
+    // ---------------- D3 Scales ----------------
+
+    function createScales(data) {
+        // X: numeric YYYYMMDD -> pixels (linear scale as required)
+        cxScale = d3.scaleLinear()
+            .domain(d3.extent(data, d => d.time))
+            .range([0, iw]);
+
+        // Radius: LOATU -> pixels
+        const loatuExtent = d3.extent(data, d => d.LOATU);
+        rScale = d3.scaleSqrt()
+            .domain(loatuExtent)
+            .range([10, 20]);
+
+        // Color by LATU
+        const latuExtent = d3.extent(data, d => d.LATU);
+        colorScale = d3.scaleQuantize()
+            .domain(latuExtent)
+            .range(["#d7191c", "#fdae61", "#ffffbf", "#a6d96a", "#1a9641"]);
+    }
+
+    // ---------------- D3 Axes ----------------
+
+    function setupAxes() {
+        xAxisG = axesG.append("g").attr("class","axis x-axis").attr("transform",`translate(0,${ih})`);
+        yAxisG = axesG.append("g").attr("class","axis y-axis");
+
+        axesG.append("text").attr("class","axis-label x-label").attr("x", iw/2).attr("y", ih+42)
+            .attr("text-anchor","middle").text("Time (Date)");
+        
+        yAxisLabel = axesG.append("text").attr("class","axis-label y-label").attr("transform","rotate(-90)")
+            .attr("x", -ih/2).attr("y", -48).attr("text-anchor","middle");
+
+        // X Grid using cxScale (linear). Empty tickFormat for grid-only.
+        axesG.append("g").attr("class","grid x-grid").attr("transform",`translate(0,${ih})`)
+            .call(
+                d3.axisBottom(cxScale)
+                  .ticks(10)
+                  .tickSize(-ih)
+                  .tickFormat("")
+            );
+    }
+
+    function updateYAxis(dataField, isAnimated = false) {
+        // Y linear scale with nice rounding
+        cyScale = d3.scaleLinear()
+            .domain(d3.extent(data, d => d[dataField])).nice()
+            .range([ih, 0]);
+        
+        // Axes
+        yAxis = d3.axisLeft(cyScale).ticks(10).tickFormat(d3.format(".1f"));
+        // For the x-axis, use the linear scale but format ticks as years/months
+        xAxis = d3.axisBottom(cxScale)
+            .ticks(10)
+            .tickFormat(d => d3.timeFormat("%Y")(parseYYYYMMDD(d)));
+
+        const t = isAnimated ? ptsG.transition().duration(750) : ptsG;
+        const axT = isAnimated ? axesG.transition().duration(750) : axesG;
+
+        // Update Y axis + label
+        axT.select(".y-axis").call(yAxis);
+        yAxisLabel.text(dataField === 'LAT' ? 
+            "Land Average Temperature (LAT, °C)" : 
+            "Cumulative Temperature (LOAT, °C)");
+
+        // Refresh Y grid
+        axesG.select(".y-grid").remove();
+        axesG.append("g").attr("class","grid y-grid")
+            .call(d3.axisLeft(cyScale).ticks(10).tickSize(-iw).tickFormat(""));
+
+        // Update X axis
+        axesG.select(".x-axis").call(xAxis);
+
+        // Re-position points explicitly via cxScale & cyScale
+        t.selectAll("circle")
+            .attr("cx", function(d){ return cxScale(d.time); })
+            .attr("cy", function(d){ return cyScale(d[dataField]); });
+    }
+
+    // ---------------- Main Draw ----------------
+    function drawScatterplot() {
+        ptsG.selectAll(".dot")
+            .data(data)
+            .join("circle")
+            .attr("class","dot")
+            .attr("r", function(d){ return rScale(d.LOATU); })
+            .attr("cx", function(d){ return cxScale(d.time); })   // <-- explicit call (required)
+            .attr("cy", function(d){ return cyScale(d.LAT);  })   // <-- explicit call (required)
+            .attr("fill", function(d){ return colorScale(d.LATU); })
+            .on("mouseenter", (ev, d) => {
+                tip.style("opacity",1).html(
+                `<strong>${d.t.toISOString().slice(0,10)}</strong><br/>
+                 LAT: <strong>${d.LAT.toFixed(2)} °C</strong><br/>
+                 LOAT: <strong>${d.LOAT.toFixed(2)} °C</strong><br/>
+                 Radius (LOATU): <strong>${d.LOATU.toFixed(3)}</strong>`
+                );
+            })
+            .on("mousemove", ev => tip.style("left",(ev.pageX+12)+"px").style("top",(ev.pageY-28)+"px"))
+            .on("mouseleave", () => tip.style("opacity",0));
+    }
+
+    // ---------------- Control Logic ----------------
+
+    function showAssignment() {
+        document.getElementById('extra-credit-controls').style.display = 'none';
+        d3.select("#show-assignment").classed("active", true);
+        d3.select("#show-extra-credit").classed("active", false);
+        updateYAxis('LAT', false);
+        ptsG.selectAll("circle").attr("fill", d => colorScale(d.LATU));
+        legendG.selectAll("*").remove(); 
+    }
+
+    function showExtraCredit() {
+        document.getElementById('extra-credit-controls').style.display = 'flex';
+        d3.select("#show-assignment").classed("active", false);
+        d3.select("#show-extra-credit").classed("active", true);
+        d3.select("#LAT").classed("active", true);
+        d3.select("#LOAT").classed("active", false);
+        updateYAxis('LAT', true);
+        ptsG.selectAll("circle").attr("fill", d => colorScale(d.LATU));
+        legendG.selectAll("*").remove(); 
+    }
+
+    d3.select("#LAT").on("click", function() {
+        d3.select(this).classed("active", true);
+        d3.select("#LOAT").classed("active", false);
+        updateYAxis('LAT', true);
+    });
+
+    d3.select("#LOAT").on("click", function() {
+        d3.select(this).classed("active", true);
+        d3.select("#LAT").classed("active", false);
+        updateYAxis('LOAT', true);
+    });
+
+    d3.select("#show-assignment").on("click", showAssignment);
+    d3.select("#show-extra-credit").on("click", showExtraCredit);
+
+    // ---------------- Load Data & Initialize ----------------
+    d3.json("../GlobalTemperatures.json").then(raw => {
+        const rows = (Array.isArray(raw) ? raw : (raw && Array.isArray(raw.temperature) ? raw.temperature : []));
+
+        // Keep both numeric time and a Date (for tooltip/formatting)
+        data = rows.map(d => ({
+            time: +d.time,                 // numeric YYYYMMDD for linear scale
+            t: parseYYYYMMDD(d.time),      // Date for tooltip/formatting
+            LAT: +d.LAT,
+            LATU: +d.LATU,
+            LOAT: +d.LOAT,
+            LOATU: +d.LOATU
+        })).filter(d => d.t && Number.isFinite(d.LAT) && Number.isFinite(d.LOAT));
+        
+        createScales(data);
+        setupAxes();
+        updateYAxis('LAT', false);
+        drawScatterplot();
+
+    }).catch(error => {
+        console.error("Error loading the data. Ensure 'GlobalTemperatures.json' is accessible:", error);
+        g.append("text").attr("x", iw/2).attr("y", ih/2).text("Error loading data. Check console.").attr("text-anchor","middle");
+    });
+    </script>
+</body>
+</html>

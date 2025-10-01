@@ -94,7 +94,7 @@
   const legendG = g.append("g").attr("class","legend").attr("transform", `translate(${iw - 210}, 8)`);
 
   // Load data and draw
-  d3.json("GlobalTemperatures.json").then(raw => {
+  d3.json("../GlobalTemperatures.json").then(raw => {
     const rows = normalizeRows(raw);
 
     const data = rows.map(d => ({

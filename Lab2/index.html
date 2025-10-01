@@ -90,7 +90,7 @@
   const tip = d3.select("body").append("div").attr("class","tooltip").style("opacity",0);
 
   // Load once; draw three charts
-  d3.json("GlobalTemperatures.json").then(raw => {
+  d3.json("../GlobalTemperatures.json").then(raw => {
     const rows = Array.isArray(raw) ? raw : (raw.temperature || raw.temperatures || []);
     const data = rows.map(d => ({
       t: acc.t(d),
