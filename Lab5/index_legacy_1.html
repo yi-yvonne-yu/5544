@@ -1,0 +1,102 @@
+<!doctype html>
+<meta charset="utf-8" />
+<title>Life Expectancy by Region (WDI)</title>
+<style>
+  body { font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; margin: 24px; }
+  h1 { font-size: 18px; margin: 0 0 12px; }
+  .legend { font-size: 12px; }
+  .tooltip {
+    position:absolute; pointer-events:none; background:#fff; border:1px solid #ccc;
+    padding:6px 8px; border-radius:6px; font-size:12px; box-shadow:0 1px 6px rgba(0,0,0,.1);
+    opacity:0;
+  }
+</style>
+
+<h1>Life Expectancy at Birth by World Bank Region (1960–latest)</h1>
+<div id="chart"></div>
+<div id="tooltip" class="tooltip"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/d3@7"></script>
+<script>
+(async function () {
+  // Load pre-aggregated CSV: Region,Year,LifeExpectancy
+  const data = await d3.csv("data/life_expectancy_regions_legacy.csv", d => ({
+    Region: d.Region,
+    Year: +d.Year,
+    LifeExpectancy: +d.LifeExpectancy
+  }));
+
+  // Group into series per region
+  const series = d3.groups(data, d => d.Region)
+                   .map(([region, values]) => ({
+                     region,
+                     values: values.sort((a,b) => d3.ascending(a.Year, b.Year))
+                   }));
+
+  // Scales & layout
+  const width = 900, height = 520, margin = {top: 20, right: 140, bottom: 40, left: 56};
+
+  const years = d3.extent(data, d => d.Year);
+  const x = d3.scaleLinear().domain(years).range([margin.left, width - margin.right]);
+
+  const y = d3.scaleLinear()
+      .domain(d3.extent(data, d => d.LifeExpectancy)).nice()
+      .range([height - margin.bottom, margin.top]);
+
+  const color = d3.scaleOrdinal()
+      .domain(series.map(s => s.region))
+      .range(d3.schemeTableau10.concat(d3.schemeSet2));
+
+  const svg = d3.select("#chart").append("svg")
+      .attr("viewBox", [0, 0, width, height]);
+
+  svg.append("g")
+     .attr("transform", `translate(0,${height - margin.bottom})`)
+     .call(d3.axisBottom(x).ticks(10).tickFormat(d3.format("d")))
+     .call(g => g.append("text")
+       .attr("x", width - margin.right).attr("y", 30)
+       .attr("fill", "currentColor").attr("text-anchor", "end").text("Year"));
+
+  svg.append("g")
+     .attr("transform", `translate(${margin.left},0)`)
+     .call(d3.axisLeft(y))
+     .call(g => g.append("text")
+       .attr("x", 0).attr("y", 12).attr("dy", "-1em")
+       .attr("fill", "currentColor").attr("text-anchor", "start")
+       .text("Life expectancy (years)"));
+
+  const line = d3.line()
+      .defined(d => Number.isFinite(d.LifeExpectancy))
+      .x(d => x(d.Year))
+      .y(d => y(d.LifeExpectancy));
+
+  // Tooltip
+  const tip = d3.select("#tooltip");
+  const showTip = (evt, html) => {
+    tip.style("opacity", 1)
+       .style("left", (evt.pageX + 10) + "px")
+       .style("top",  (evt.pageY + 10) + "px")
+       .html(html);
+  };
+  const hideTip = () => tip.style("opacity", 0);
+
+  // Draw series
+  svg.append("g")
+    .selectAll("path")
+    .data(series)
+    .join("path")
+      .attr("fill", "none")
+      .attr("stroke", d => color(d.region))
+      .attr("stroke-width", 2)
+      .attr("d", d => line(d.values))
+      .on("mousemove", (evt, d) => showTip(evt, `<b>${d.region}</b>`))
+      .on("mouseleave", hideTip);
+
+  // Legend
+  const legend = svg.append("g").attr("transform", `translate(${width - margin.right + 10}, ${margin.top})`);
+  const item = legend.selectAll("g").data(series).join("g")
+      .attr("transform", (d, i) => `translate(0, ${i*18})`);
+  item.append("rect").attr("width", 12).attr("height", 12).attr("fill", d => color(d.region));
+  item.append("text").attr("x", 18).attr("y", 10).attr("class", "legend").text(d => d.region);
+})();
+</script>

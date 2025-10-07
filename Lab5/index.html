@@ -1,0 +1,176 @@
+<!doctype html>
+<meta charset="utf-8" />
+<title>Life Expectancy by Region (WDI)</title>
+<style>
+  :root { color-scheme: light white; }
+  body { font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; margin: 24px; }
+  h1 { font-size: 18px; margin: 0 0 12px; }
+  .controls { margin: 8px 0 12px; display:flex; gap:8px; }
+  button { padding:6px 10px; border:1px solid #ccc; border-radius:8px; background:#fff; cursor:pointer; }
+  button[aria-pressed="true"] { background:#f3f4f6; font-weight:600; }
+  .axis text { fill:#111; font-size:12px; }
+  .axis line, .axis path { stroke:#888; }
+  .grid line { stroke:#eee; }
+  .legend { font-size:12px; }
+  .tooltip {
+    position:absolute; pointer-events:none; background:#fff; border:1px solid #ccc;
+    padding:6px 8px; border-radius:6px; font-size:12px; box-shadow:0 1px 6px rgba(0,0,0,.1);
+    opacity:0;
+  }
+</style>
+
+<h1>Life Expectancy at Birth by World Bank Region (1960–2023)</h1>
+
+<div class="controls">
+  <button id="btn-full" aria-pressed="true">Full sample</button>
+  <button id="btn-20">20% sample</button>
+</div>
+
+<div id="chart"></div>
+<div id="tooltip" class="tooltip"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/d3@7"></script>
+<script>
+const width = 980, height = 520;
+// ↑ a bit wider, and much bigger right margin for legend
+const margin = { top: 20, right: 240, bottom: 40, left: 110 };
+const labelPadding = 70;
+
+const files = {
+  full: "data/life_expectancy_regions.csv",
+  p20:  "data/life_expectancy_regions_sample.csv"
+};
+
+const tip = d3.select("#tooltip");
+function showTip(evt, html) {
+  tip.style("opacity", 1).style("left", (evt.pageX + 10) + "px")
+     .style("top",  (evt.pageY + 10) + "px").html(html);
+}
+function hideTip() { tip.style("opacity", 0); }
+
+// util: wrap long SVG text into tspans (width in px)
+function wrapText(selection, width, lineHeight = 14) {
+  selection.each(function () {
+    const text = d3.select(this);
+    const words = text.text().split(/\s+/).reverse();
+    let word, line = [], lineNumber = 0;
+    const x = text.attr("x") || 0, y = +text.attr("y") || 0;
+    const dy = 0;
+    let tspan = text.text(null).append("tspan").attr("x", x).attr("y", y).attr("dy", dy + "px");
+    while (word = words.pop()) {
+      line.push(word);
+      tspan.text(line.join(" "));
+      if (tspan.node().getComputedTextLength() > width && line.length > 1) {
+        line.pop();
+        tspan.text(line.join(" "));
+        line = [word];
+        tspan = text.append("tspan")
+          .attr("x", x).attr("y", y)
+          .attr("dy", (++lineNumber * lineHeight) + "px")
+          .text(word);
+      }
+    }
+    // store total height used on the element for layout
+    text.attr("data-lines", lineNumber + 1);
+  });
+}
+
+async function render(file) {
+  const data = await d3.csv(file, d => ({
+    Region: d.Region,
+    Year: +d.Year,
+    LifeExpectancy: +d.LifeExpectancy
+  }));
+
+  const series = d3.groups(data, d => d.Region).map(([region, values]) => ({
+    region, values: values.sort((a,b) => d3.ascending(a.Year, b.Year))
+  }));
+
+  const years = d3.extent(data, d => d.Year);
+  const x = d3.scaleLinear().domain(years).range([margin.left, width - margin.right]);
+  const y = d3.scaleLinear()
+    .domain(d3.extent(data, d => d.LifeExpectancy)).nice()
+    .range([height - margin.bottom, margin.top]);
+  const color = d3.scaleOrdinal()
+    .domain(series.map(s => s.region))
+    .range(d3.schemeTableau10.concat(d3.schemeSet2));
+
+  d3.select("#chart").selectAll("svg").remove();
+  const svg = d3.select("#chart").append("svg")
+    .attr("width", width).attr("height", height)
+    .attr("viewBox", [0, 0, width, height]);
+
+  const xAxis = d3.axisBottom(x).ticks(10).tickFormat(d3.format("d")).tickSizeOuter(0);
+  const yAxis = d3.axisLeft(y).tickSizeOuter(0);
+
+  svg.append("g")
+    .attr("class", "grid")
+    .attr("transform", `translate(${margin.left},0)`)
+    .call(d3.axisLeft(y).tickSize(-(width - margin.left - margin.right)).tickFormat(""))
+    .select(".domain").remove();
+
+  svg.append("g")
+    .attr("class", "axis")
+    .attr("transform", `translate(0,${height - margin.bottom})`)
+    .call(xAxis)
+    .call(g => g.append("text")
+      .attr("x", width - margin.right).attr("y", 30)
+      .attr("fill", "#111").attr("text-anchor", "end").text("Year"));
+
+  svg.append("g").attr("class", "axis")
+    .attr("transform", `translate(${margin.left},0)`).call(yAxis);
+
+  svg.append("text")
+    .attr("transform", `translate(${margin.left - labelPadding}, ${height/2}) rotate(-90)`)
+    .attr("text-anchor", "middle").attr("dominant-baseline", "central")
+    .attr("font-size", 12).attr("fill", "#111")
+    .text("Life expectancy (years)");
+
+  const line = d3.line()
+    .defined(d => Number.isFinite(d.LifeExpectancy))
+    .x(d => x(d.Year)).y(d => y(d.LifeExpectancy));
+
+  svg.append("g").selectAll("path").data(series).join("path")
+    .attr("fill", "none").attr("stroke", d => color(d.region))
+    .attr("stroke-width", 2).attr("d", d => line(d.values))
+    .on("mousemove", (evt, d) => showTip(evt, `<b>${d.region}</b>`))
+    .on("mouseleave", hideTip);
+
+  // Legend with wrapping
+  const legendX = width - margin.right + 12;
+  const legendY = margin.top;
+  const legendTextWidth = 180; // wrap width
+  const rowGap = 6;
+
+  const legend = svg.append("g").attr("transform", `translate(${legendX},${legendY})`);
+  const items = legend.selectAll("g").data(series).join("g");
+
+  items.append("rect").attr("width", 12).attr("height", 12)
+    .attr("fill", d => color(d.region)).attr("y", 0).attr("x", 0);
+
+  items.append("text").attr("x", 18).attr("y", 10)
+    .attr("class", "legend").text(d => d.region)
+    .call(wrapText, legendTextWidth);
+
+  // After wrapping, position each item vertically accounting for multi-line labels
+  let yOffset = 0;
+  items.attr("transform", function() {
+    const text = d3.select(this).select("text");
+    const lines = +text.attr("data-lines") || 1;
+    const blockHeight = Math.max(12, lines * 14); // legend box height per item
+    const yHere = yOffset;
+    yOffset += blockHeight + rowGap;
+    return `translate(0, ${yHere})`;
+  });
+}
+
+const btnFull = document.getElementById("btn-full");
+const btn20   = document.getElementById("btn-20");
+function setActive(which) {
+  btnFull.setAttribute("aria-pressed", which === "full");
+  btn20.setAttribute("aria-pressed", which === "p20");
+}
+btnFull.addEventListener("click", () => { setActive("full"); render(files.full); });
+btn20.addEventListener("click",   () => { setActive("p20");  render(files.p20);  });
+render(files.full);
+</script>
