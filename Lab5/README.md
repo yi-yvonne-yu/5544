@@ -35,6 +35,7 @@
 ### 8) When AI cannot fix, you fix one item (AI + You, 20 pts)
 - Clear the Filter table in "Full" and "Sample".
 - Change Difference to absolute value.
+- Also clean up some comments and lables that may be misleading.
 
 ### 9) Ask AI to justify design choices (AI, 5 pts)
 - Views built for the question: single (Full/Sample), Overlay (solid vs dashed, same axes), and Difference (Sample − Full) centered at 0 to expose sampling effects.
@@ -64,10 +65,10 @@
 ---
 
 ## Files in this repo
-- `index.html` — D3 visualization with **Full sample** / **20% sample** buttons.
+- `index.html` — D3 visualization with **Full sample** / **20% sample**/ **Overlay**/ **Difference** buttons.
 - `make_regions.py` — data prep script.
-- `life_expectancy_regions.csv` — output (full).
-- `life_expectancy_regions_sample.csv` — output (20% panel).
+- `data/life_expectancy_rows_full.csv` — row-level, cleaned Country×Year records (13,854 rows).
+- `data/life_expectancy_rows_sample.csv` — row-level, sampled (~20% per Region×Year, seed=42) (2,624 rows).
+- `data/life_expectancy_regions.csv` — aggregated Full: mean life expectancy per Region×Year.
+- `data/life_expectancy_regions_sample.csv` — aggregated Sample: mean life expectancy per Region×Year.
 - `README.md` — this document.
-
-- what did you learn through the process? Critically evaluate 
