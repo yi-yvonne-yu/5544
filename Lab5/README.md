@@ -26,25 +26,23 @@
 - Observation: AI keeps the same code and visual style, only swapping the data source.  
 
 ### 6) Critique the AI output with guidelines (You, 15 pts)
-- Check here: https://chatgpt.com/share/68e5b57f-2e7c-8013-a5c9-76fdb02857e3
+- Check here: https://chatgpt.com/share/68e5bba2-ad98-8013-a0dc-11fca4477398
 
 ### 7) Ask AI to fix items one‑by‑one (AI, 5 pts)
-- Check here: https://chatgpt.com/share/68e5b57f-2e7c-8013-a5c9-76fdb02857e3
+- Check here: https://chatgpt.com/share/68e5bba2-ad98-8013-a0dc-11fca4477398
 
 ### 8) When AI cannot fix, you fix one item (AI + You, 20 pts)
 - Clear the Filter table in "Full" and "Sample".
 - Change Difference to absolute value.
 
 ### 9) Ask AI to justify design choices (AI, 5 pts)
-- Views: Full/Sample for baselines; Overlay for direct visual comparison; Absolute Diff to quantify sampling error magnitude.
-- Scales/domains: Linear axes; y starts at 0; shared domains across views for fair comparisons.
-- Encoding: Color = region only (Tableau10); stroke style (solid vs dashed) = dataset to avoid color overloading.
-- Filters: Shown only in Overlay/Diff (analysis modes); hidden in Full/Sample to keep baselines clean.
-- Interactions: Tooltips for exact values; Download CSV exposes computed differences for transparency.
-- Sampling: Stratified 20% per Region×Year (reproducible random_state=42) to study coverage effects across groups.
-- Diff choice: |Sample − Full| emphasizes error size; direction available in data/tooltip if needed.
-- Data cleaning: Drop aggregates (no Region), coerce numeric, remove NaN/±∞ to ensure valid means.
-- Usability/accessibility: Stable legend; light gridlines; hidden/inert + ARIA for screen readers and keyboard users.
+- Views built for the question: single (Full/Sample), Overlay (solid vs dashed, same axes), and Difference (Sample − Full) centered at 0 to expose sampling effects.
+- Fair comparison: fixed x/y domains across modes so lines don’t shift when toggling.
+- Defensible axes: linear scales; labeled Year and Life expectancy (years); baseline at 0 (and 0-baseline for differences in years).
+- Color & legend: colorblind-safe (Tableau10), color encodes only region, stable legend order/colors across all views.
+- Interaction where it helps: region filters only in Overlay and Difference; disabled for Full/Sample to keep them authoritative.
+- Precision on hover: tooltips show Region, Year, and exact value (or difference) in years.
+- Accessibility/usability: clear button labels with aria-pressed; uncluttered layout and consistent styling.
 
 ### 10) What did you learn through the process? Critically evaluate (You, 10 pts)
 - I learned that small design choices strongly affect inference. Keeping shared axes across Full/Sample was essential—without it, apparent gaps between regions were partly scale artifacts. Making Difference an absolute value clarified the magnitude of sampling error; however, it also hides direction, so I exposed the signed values in data/CSV to keep the analysis honest. Moving filters to Overlay/Diff only reduced cognitive load when reading baselines.
