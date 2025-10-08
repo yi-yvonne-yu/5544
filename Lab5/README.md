@@ -4,13 +4,14 @@
 ## Step‑by‑Step Answers
 
 ### 1) Data preparation (You, 10 pts)
-- **Goal:** Generate a small and a large CSV for the visualization.
 - **How:** Run `make_regions.py` to produce:
-  - `life_expectancy_regions.csv` — regional mean life expectancy per **Region × Year** using all available countries.
-  - `life_expectancy_regions_sample.csv` — for each **Region × Year**, randomly sample ~20% of country–year records (reproducible with `random_state=42`), then compute the regional mean.
+  - `data/life_expectancy_rows_full.csv` — row-level, cleaned Country×Year records (13,854 rows).
+  - `data/life_expectancy_rows_sample.csv` — ~20% stratified sample by Region×Year, reproducible (rate=0.2, seed=42) (2,624 rows).
+  - `life_expectancy_regions.csv` — mean life expectancy per Region×Year from the full rows.
+  - `life_expectancy_regions_sample.csv` — mean life expectancy per Region×Year from the sampled rows.
 - **Cleaning steps:** 
-  - Convert year columns to numeric and **drop NaN/null/±∞** life-expectancy and Region values.
-- **Source:** World Bank WDI bulk files (`WDICSV.csv`, `WDICountry.csv`), indicator **`SP.DYN.LE00.IN`** (years).
+  - Keep indicator SP.DYN.LE00.IN, join Region, drop aggregates (no Region), melt years, coerce numerics, remove NaN/±∞.
+- **Source:** World Bank WDI (WDICSV.csv, WDICountry.csv).
 
 ### 2) Apply core vis principles: choose **one task** (You, 15 pts)
 - **Chosen question:** *Is there a correlation between life expectancy and region over the years?*  
