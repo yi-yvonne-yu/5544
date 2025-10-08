@@ -1,176 +1,440 @@
-<!doctype html>
-<meta charset="utf-8" />
-<title>Life Expectancy by Region (WDI)</title>
+<!DOCTYPE html>
+<meta charset="utf-8">
+<title>Life Expectancy — Full vs Sample (Overlay, Difference, Filters & Table)</title>
 <style>
-  :root { color-scheme: light white; }
-  body { font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; margin: 24px; }
-  h1 { font-size: 18px; margin: 0 0 12px; }
-  .controls { margin: 8px 0 12px; display:flex; gap:8px; }
-  button { padding:6px 10px; border:1px solid #ccc; border-radius:8px; background:#fff; cursor:pointer; }
-  button[aria-pressed="true"] { background:#f3f4f6; font-weight:600; }
-  .axis text { fill:#111; font-size:12px; }
-  .axis line, .axis path { stroke:#888; }
-  .grid line { stroke:#eee; }
-  .legend { font-size:12px; }
-  .tooltip {
-    position:absolute; pointer-events:none; background:#fff; border:1px solid #ccc;
-    padding:6px 8px; border-radius:6px; font-size:12px; box-shadow:0 1px 6px rgba(0,0,0,.1);
-    opacity:0;
+  :root { --accent: #2563eb; }
+  body { font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif; margin: 24px; }
+  h1 { margin: 0 0 4px; font-size: 22px; }
+  .sub { margin: 0 0 12px; color: #555; }
+  #controls, #filters { display: flex; align-items: center; gap: 8px; margin: 0 0 12px; flex-wrap: wrap; }
+  .btn {
+    appearance: none; border: 1px solid #d0d7de; background: #fff; padding: 8px 10px; border-radius: 8px;
+    font-size: 13px; cursor: pointer;
   }
+  .btn.active { border-color: var(--accent); color: #fff; background: var(--accent); }
+  #chart { max-width: 980px; }
+  .axis path, .axis line { fill: none; stroke: #000; shape-rendering: crispEdges; }
+  .grid line { stroke: #eee; }
+  .legend { display: flex; flex-wrap: wrap; gap: 8px; margin: 12px 0; }
+  .legend-item { display: inline-flex; align-items: center; gap: 6px; cursor: pointer; user-select: none; }
+  .legend-swatch { width: 12px; height: 12px; border-radius: 2px; background: #ccc; }
+  .legend-item.inactive { opacity: 0.35; }
+  .tooltip {
+    position: absolute; pointer-events: none; background: white; border: 1px solid #ddd;
+    border-radius: 6px; padding: 6px 8px; font-size: 12px; box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+  }
+  .annotation { font-size: 12px; color:#444; margin-top: 6px; }
+  #summary { margin-top: 6px; font-size: 13px; color:#333; }
+  .note { font-size: 12px; color:#444; margin-top: 8px; }
+  .mode { font-size: 12px; color:#333; margin-top: 2px; }
+  fieldset { border: 1px solid #e5e7eb; border-radius: 10px; padding: 8px 10px; }
+  legend { font-size: 12px; color:#333; padding: 0 6px; }
+  fieldset[aria-disabled="true"] { opacity: 0.5; }
+  .chk-wrap { display:flex; flex-wrap: wrap; gap: 10px; max-height: 120px; overflow: auto; }
+  .pill { display:inline-flex; align-items:center; gap:6px; font-size:12px; }
+  .pill input { transform: scale(1.1); }
+  .tblwrap { margin-top: 12px; max-width: 980px; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th, td { padding: 6px 8px; border-bottom: 1px solid #eee; text-align: left; }
+  th { background: #fafafa; position: sticky; top: 0; }
+  .pos { color: #065f46; } .neg { color: #b91c1c; }
+  #filters[hidden] { display: none !important; }
 </style>
 
-<h1>Life Expectancy at Birth by World Bank Region (1960–2023)</h1>
+<h1>Is there a correlation between life expectancy and region over the years?</h1>
 
-<div class="controls">
-  <button id="btn-full" aria-pressed="true">Full sample</button>
-  <button id="btn-20">20% sample</button>
+<div id="controls" aria-label="View toggles">
+  <button class="btn" id="btn-full" aria-pressed="false">Full Dataset</button>
+  <button class="btn" id="btn-sample" aria-pressed="false">Sample 20% Dataset</button>
+  <button class="btn" id="btn-overlay" aria-pressed="true">Overlay</button>
+  <button class="btn" id="btn-diff" aria-pressed="false">Absolute Difference</button>
+  <span id="status" class="sub" role="status" aria-live="polite"></span>
 </div>
 
+<fieldset id="filters" aria-label="Region filters">
+  <legend>Filters (apply to <b>Overlay</b> and <b>Difference</b> only)</legend>
+  <div class="chk-wrap" id="region-checkboxes"></div>
+  <div>
+    <button class="btn" id="btn-all">Select All</button>
+    <button class="btn" id="btn-none">Select None</button>
+  </div>
+</fieldset>
+
 <div id="chart"></div>
-<div id="tooltip" class="tooltip"></div>
+<div class="legend" id="legend" aria-label="Region legend"></div>
+<p class="annotation" id="ann">Axis labels: <i>Year</i> (x, linear), <i>Life expectancy (years)</i> (y, linear).</p>
+<div id="summary"></div>
+<p class="mode" id="mode-note"></p>
+
+<div class="tblwrap" id="diff-table-wrap" style="display:none;">
+  <h3>Difference Table (|Sample − Full)</h3>
+  <div id="diff-table"></div>
+</div>
 
 <script src="https://cdn.jsdelivr.net/npm/d3@7"></script>
 <script>
-const width = 980, height = 520;
-// ↑ a bit wider, and much bigger right margin for legend
-const margin = { top: 20, right: 240, bottom: 40, left: 110 };
-const labelPadding = 70;
-
-const files = {
+const FILES = {
   full: "data/life_expectancy_regions.csv",
-  p20:  "data/life_expectancy_regions_sample.csv"
+  sample: "data/life_expectancy_regions_sample.csv"
 };
 
-const tip = d3.select("#tooltip");
-function showTip(evt, html) {
-  tip.style("opacity", 1).style("left", (evt.pageX + 10) + "px")
-     .style("top",  (evt.pageY + 10) + "px").html(html);
-}
-function hideTip() { tip.style("opacity", 0); }
-
-// util: wrap long SVG text into tspans (width in px)
-function wrapText(selection, width, lineHeight = 14) {
-  selection.each(function () {
-    const text = d3.select(this);
-    const words = text.text().split(/\s+/).reverse();
-    let word, line = [], lineNumber = 0;
-    const x = text.attr("x") || 0, y = +text.attr("y") || 0;
-    const dy = 0;
-    let tspan = text.text(null).append("tspan").attr("x", x).attr("y", y).attr("dy", dy + "px");
-    while (word = words.pop()) {
-      line.push(word);
-      tspan.text(line.join(" "));
-      if (tspan.node().getComputedTextLength() > width && line.length > 1) {
-        line.pop();
-        tspan.text(line.join(" "));
-        line = [word];
-        tspan = text.append("tspan")
-          .attr("x", x).attr("y", y)
-          .attr("dy", (++lineNumber * lineHeight) + "px")
-          .text(word);
-      }
-    }
-    // store total height used on the element for layout
-    text.attr("data-lines", lineNumber + 1);
-  });
-}
-
-async function render(file) {
-  const data = await d3.csv(file, d => ({
-    Region: d.Region,
-    Year: +d.Year,
-    LifeExpectancy: +d.LifeExpectancy
-  }));
-
-  const series = d3.groups(data, d => d.Region).map(([region, values]) => ({
-    region, values: values.sort((a,b) => d3.ascending(a.Year, b.Year))
-  }));
-
-  const years = d3.extent(data, d => d.Year);
-  const x = d3.scaleLinear().domain(years).range([margin.left, width - margin.right]);
-  const y = d3.scaleLinear()
-    .domain(d3.extent(data, d => d.LifeExpectancy)).nice()
-    .range([height - margin.bottom, margin.top]);
-  const color = d3.scaleOrdinal()
-    .domain(series.map(s => s.region))
-    .range(d3.schemeTableau10.concat(d3.schemeSet2));
-
-  d3.select("#chart").selectAll("svg").remove();
-  const svg = d3.select("#chart").append("svg")
-    .attr("width", width).attr("height", height)
-    .attr("viewBox", [0, 0, width, height]);
-
-  const xAxis = d3.axisBottom(x).ticks(10).tickFormat(d3.format("d")).tickSizeOuter(0);
-  const yAxis = d3.axisLeft(y).tickSizeOuter(0);
-
-  svg.append("g")
-    .attr("class", "grid")
-    .attr("transform", `translate(${margin.left},0)`)
-    .call(d3.axisLeft(y).tickSize(-(width - margin.left - margin.right)).tickFormat(""))
-    .select(".domain").remove();
-
-  svg.append("g")
-    .attr("class", "axis")
-    .attr("transform", `translate(0,${height - margin.bottom})`)
-    .call(xAxis)
-    .call(g => g.append("text")
-      .attr("x", width - margin.right).attr("y", 30)
-      .attr("fill", "#111").attr("text-anchor", "end").text("Year"));
-
-  svg.append("g").attr("class", "axis")
-    .attr("transform", `translate(${margin.left},0)`).call(yAxis);
-
-  svg.append("text")
-    .attr("transform", `translate(${margin.left - labelPadding}, ${height/2}) rotate(-90)`)
-    .attr("text-anchor", "middle").attr("dominant-baseline", "central")
-    .attr("font-size", 12).attr("fill", "#111")
-    .text("Life expectancy (years)");
-
-  const line = d3.line()
-    .defined(d => Number.isFinite(d.LifeExpectancy))
-    .x(d => x(d.Year)).y(d => y(d.LifeExpectancy));
-
-  svg.append("g").selectAll("path").data(series).join("path")
-    .attr("fill", "none").attr("stroke", d => color(d.region))
-    .attr("stroke-width", 2).attr("d", d => line(d.values))
-    .on("mousemove", (evt, d) => showTip(evt, `<b>${d.region}</b>`))
-    .on("mouseleave", hideTip);
-
-  // Legend with wrapping
-  const legendX = width - margin.right + 12;
-  const legendY = margin.top;
-  const legendTextWidth = 180; // wrap width
-  const rowGap = 6;
-
-  const legend = svg.append("g").attr("transform", `translate(${legendX},${legendY})`);
-  const items = legend.selectAll("g").data(series).join("g");
-
-  items.append("rect").attr("width", 12).attr("height", 12)
-    .attr("fill", d => color(d.region)).attr("y", 0).attr("x", 0);
-
-  items.append("text").attr("x", 18).attr("y", 10)
-    .attr("class", "legend").text(d => d.region)
-    .call(wrapText, legendTextWidth);
-
-  // After wrapping, position each item vertically accounting for multi-line labels
-  let yOffset = 0;
-  items.attr("transform", function() {
-    const text = d3.select(this).select("text");
-    const lines = +text.attr("data-lines") || 1;
-    const blockHeight = Math.max(12, lines * 14); // legend box height per item
-    const yHere = yOffset;
-    yOffset += blockHeight + rowGap;
-    return `translate(0, ${yHere})`;
-  });
-}
-
 const btnFull = document.getElementById("btn-full");
-const btn20   = document.getElementById("btn-20");
-function setActive(which) {
-  btnFull.setAttribute("aria-pressed", which === "full");
-  btn20.setAttribute("aria-pressed", which === "p20");
+const btnSample = document.getElementById("btn-sample");
+const btnOverlay = document.getElementById("btn-overlay");
+const btnDiff = document.getElementById("btn-diff");
+const statusEl = document.getElementById("status");
+const summaryEl = document.getElementById("summary");
+const modeNote = document.getElementById("mode-note");
+const ann = document.getElementById("ann");
+const regionBox = document.getElementById("region-checkboxes");
+const filtersFS = document.getElementById("filters");
+const diffTableWrap = document.getElementById("diff-table-wrap");
+const diffTableDiv = document.getElementById("diff-table");
+
+[btnFull, btnSample, btnOverlay, btnDiff].forEach(b => b.addEventListener("click", () => {
+  setActive(b);
+  renderView(b.id.replace("btn-",""));
+}));
+
+document.getElementById("btn-all").addEventListener("click", () => { setAllRegionChecks(true); rerenderCurrent(); });
+document.getElementById("btn-none").addEventListener("click", () => { setAllRegionChecks(false); rerenderCurrent(); });
+
+function showFilters(visible) {
+  filtersFS.hidden = !visible;               
+  filtersFS.inert = !visible;               
+  filtersFS.setAttribute("aria-hidden", (!visible).toString());
 }
-btnFull.addEventListener("click", () => { setActive("full"); render(files.full); });
-btn20.addEventListener("click",   () => { setActive("p20");  render(files.p20);  });
-render(files.full);
+
+function setActive(activeBtn) {
+  [btnFull, btnSample, btnOverlay, btnDiff].forEach(b => {
+    const on = (b === activeBtn);
+    b.classList.toggle("active", on);
+    b.setAttribute("aria-pressed", on ? "true" : "false");
+  });
+}
+
+function setFiltersEnabled(enabled) {
+  filtersFS.setAttribute("aria-disabled", enabled ? "false" : "true");
+}
+
+// NEW: Toggle visibility of the entire Filters fieldset
+function applyFiltersVisibility(mode) {
+  const show = (mode === "overlay" || mode === "diff");
+  filtersFS.hidden = !show;                 // hide in Full/Sample
+  filtersFS.setAttribute("aria-hidden", show ? "false" : "true");
+}
+
+function inferColumns(columns) {
+  const low = columns.map(c => c.toLowerCase().trim());
+  const find = (preds) => {
+    for (let i=0;i<columns.length;i++) {
+      const s = low[i];
+      if (preds.some(p => p(s))) return columns[i];
+    }
+    return null;
+  };
+  const yearCol = find([s => s==="year", s => s==="yr", s => s.includes("year")]);
+  const regionCol = find([s => s==="region", s => s.includes("region")]);
+  const lifeCol = find([
+    s => s==="lifeexpectancy",
+    s => s==="life_expectancy",
+    s => s==="lifeexp",
+    s => s==="life_expectancy_years",
+    s => s==="life_expectancy_at_birth",
+    s => (s.includes("life") && s.includes("exp"))
+  ]);
+  return {yearCol, regionCol, lifeCol};
+}
+
+Promise.all([
+  d3.csv(FILES.full, d3.autoType).catch(() => null),
+  d3.csv(FILES.sample, d3.autoType).catch(() => null)
+]).then(([fullRaw, sampleRaw]) => {
+  if (!fullRaw && !sampleRaw) throw new Error("Could not load either CSV.");
+
+  function parseRows(raw) {
+    if (!raw) return [];
+    const {yearCol, regionCol, lifeCol} = inferColumns(Object.keys(raw[0]));
+    if (!yearCol || !regionCol || !lifeCol) return [];
+    return raw
+      .map(d => ({ year:+d[yearCol], region:String(d[regionCol]), life_expectancy:+d[lifeCol] }))
+      .filter(d => Number.isFinite(d.year) && d.region && Number.isFinite(d.life_expectancy));
+  }
+  const rowsFull = parseRows(fullRaw);
+  const rowsSample = parseRows(sampleRaw);
+
+  // Global domains & regions
+  const allRows = rowsFull.concat(rowsSample);
+  const xDomain = d3.extent(allRows, d => d.year);
+  const yDomain = [0, Math.ceil((d3.max(allRows, d => d.life_expectancy) ?? 100) + 2)];
+  const regionsGlobal = Array.from(new Set(allRows.map(d => d.region))).sort(d3.ascending);
+  const color = d3.scaleOrdinal(d3.schemeTableau10).domain(regionsGlobal);
+
+  // Build filter checkboxes
+  regionBox.innerHTML = "";
+  regionsGlobal.forEach(r => {
+    const id = "chk-" + r.replace(/\\s+/g,"_").replace(/[^\\w\\-]/g,"");
+    const label = document.createElement("label");
+    label.className = "pill";
+    label.innerHTML = `<input type="checkbox" id="${id}" data-region="${r}" checked> ${r}`;
+    regionBox.appendChild(label);
+    label.querySelector("input").addEventListener("change", () => rerenderCurrent());
+  });
+
+  function getSelectedRegions() {
+    return Array.from(regionBox.querySelectorAll("input[type=checkbox]"))
+      .filter(cb => cb.checked)
+      .map(cb => cb.getAttribute("data-region"));
+  }
+  function setAllRegionChecks(val) {
+    Array.from(regionBox.querySelectorAll("input[type=checkbox]")).forEach(cb => cb.checked = val);
+  }
+  window.setAllRegionChecks = setAllRegionChecks;
+  function toSeries(rows) {
+    const byKey = d3.rollup(rows, v => d3.mean(v, d => d.life_expectancy), d => d.region, d => d.year);
+    return regionsGlobal.map(region => {
+      const yearMap = byKey.get(region) || new Map();
+      const values = Array.from(yearMap, ([year, life_expectancy]) => ({year:+year, life_expectancy:+life_expectancy}))
+                          .sort((a,b) => d3.ascending(a.year, b.year));
+      return { region, values };
+    });
+  }
+  const seriesFull = toSeries(rowsFull);
+  const seriesSample = toSeries(rowsSample);
+
+  function indexSeries(series) {
+    const m = new Map();
+    series.forEach(s => s.values.forEach(v => m.set(`${s.region}|${v.year}`, v.life_expectancy)));
+    return m;
+  }
+  const idxFull = indexSeries(seriesFull);
+  const idxSample = indexSeries(seriesSample);
+
+  const seriesDiff = regionsGlobal.map(region => {
+    const years = Array.from(new Set(
+      (seriesFull.find(s => s.region===region)||{values:[]}).values.map(v=>v.year)
+      .concat((seriesSample.find(s => s.region===region)||{values:[]}).values.map(v=>v.year))
+    )).sort(d3.ascending);
+    const vals = years.map(y => {
+      const f = idxFull.get(`${region}|${y}`);
+      const s = idxSample.get(`${region}|${y}`);
+      if (f==null || s==null) return null;
+      return {year:y, diff: Math.abs(s - f), full:f, sample:s}; // <= 這裡改成絕對值
+    }).filter(Boolean);
+    return { region, values: vals };
+  });
+
+
+  function buildDiffTableRows(selectedRegions) {
+    const rows = [];
+    seriesDiff.forEach(s => {
+      if (!selectedRegions.includes(s.region)) return;
+      s.values.forEach(v => rows.push({ region:s.region, year:v.year, diff:v.diff, full:v.full, sample:v.sample }));
+    });
+    rows.sort((a,b) => a.year===b.year ? d3.ascending(a.region,b.region) : d3.ascending(a.year,b.year));
+    return rows;
+  }
+
+  // Chart helpers
+  const margin = {top: 24, right: 24, bottom: 44, left: 60};
+  const width = 980, height = 520;
+
+  function setupXY(yDom, yLabel) {
+    const chart = d3.select("#chart"); chart.selectAll("*").remove();
+    const legend = d3.select("#legend"); legend.selectAll("*").remove();
+
+    const xScale = d3.scaleLinear().domain(xDomain).range([margin.left, width - margin.right]);
+    const yScale = d3.scaleLinear().domain(yDom).range([height - margin.bottom, margin.top]);
+
+    const svg = d3.select("#chart").append("svg")
+      .attr("viewBox", [0, 0, width, height])
+      .attr("width", width)
+      .attr("height", height);
+
+    svg.append("g")
+      .attr("class", "grid")
+      .attr("transform", `translate(0,${height - margin.bottom})`)
+      .call(d3.axisBottom(xScale).tickSize(-(height - margin.top - margin.bottom)).tickFormat(""))
+      .selectAll(".tick line").attr("stroke","#f2f2f2");
+
+    svg.append("g")
+      .attr("class", "grid")
+      .attr("transform", `translate(${margin.left},0)`)
+      .call(d3.axisLeft(yScale).tickSize(-(width - margin.left - margin.right)).tickFormat(""))
+      .selectAll(".tick line").attr("stroke","#f2f2f2");
+
+    svg.append("g")
+      .attr("class", "axis")
+      .attr("transform", `translate(0,${height - margin.bottom})`)
+      .call(d3.axisBottom(xScale).ticks(10).tickFormat(d3.format("d")));
+    svg.append("text")
+      .attr("text-anchor", "middle")
+      .attr("x", margin.left + (width - margin.left - margin.right) / 2)
+      .attr("y", height - 8)
+      .text("Year");
+
+    svg.append("g")
+      .attr("class", "axis")
+      .attr("transform", `translate(${margin.left},0)`)
+      .call(d3.axisLeft(yScale));
+    svg.append("text")
+      .attr("text-anchor", "middle")
+      .attr("transform", `translate(18, ${margin.top + (height - margin.top - margin.bottom)/2}) rotate(-90)`)
+      .text(yLabel);
+
+    // Legend (stable order)
+    const legendItems = d3.select("#legend").selectAll(".legend-item")
+      .data(regionsGlobal)
+      .join("div")
+      .attr("class","legend-item");
+    legendItems.append("div").attr("class","legend-swatch").style("background", r => color(r));
+    legendItems.append("div").text(r => r);
+
+    const tooltip = d3.select("body").append("div").attr("class", "tooltip").style("display","none");
+    return {svg, xScale, yScale, tooltip};
+  }
+
+  function drawRegionLines(svg, x, y, series, accessor, style={}) {
+    const line = d3.line().x(d => x(d.year)).y(d => y(accessor(d)));
+    const regionGroups = svg.append("g").selectAll(".region")
+      .data(series)
+      .join("g")
+      .attr("class", "region");
+
+    regionGroups.append("path")
+      .attr("fill","none")
+      .attr("stroke", d => color(d.region))
+      .attr("stroke-width", 2)
+      .attr("stroke-opacity", style.strokeOpacity ?? 1)
+      .attr("stroke-dasharray", style.strokeDasharray ?? null)
+      .attr("d", d => line(d.values));
+
+    regionGroups.selectAll("circle")
+      .data(d => d.values.map(v => ({...v, region: d.region})))
+      .join("circle")
+      .attr("r", 2.5)
+      .attr("cx", d => x(d.year))
+      .attr("cy", d => y(accessor(d)))
+      .attr("fill", d => color(d.region))
+      .attr("fill-opacity", style.strokeOpacity ?? 1)
+      .on("mouseenter", (event, d) => {
+        const yVal = accessor(d);
+        d3.select(".tooltip").style("display","block")
+          .html(`<b>${d.region}</b><br>Year: ${d.year}<br>${style.isDiff ? "Absolute difference" : "Life expectancy"}: ${yVal.toFixed(2)} years`);
+      })
+      .on("mousemove", (event) => {
+        d3.select(".tooltip").style("left", (event.pageX + 12) + "px").style("top", (event.pageY - 24) + "px");
+      })
+      .on("mouseleave", () => d3.select(".tooltip").style("display","none"));
+  }
+
+  // Summary helpers
+  function regionSeparationFromRows(rows) {
+    const byYear = d3.rollups(
+      rows,
+      yrRows => {
+        const yAll = yrRows.map(d => d.life_expectancy);
+        const meanAll = d3.mean(yAll);
+        const ssTotal = d3.sum(yAll, y => (y - meanAll) ** 2);
+        const byRegion = d3.rollups(
+          yrRows,
+          r => ({ mean: d3.mean(r, d => d.life_expectancy), n: r.length }),
+          d => d.region
+        );
+        const ssBetween = d3.sum(byRegion, ([, stat]) => stat.n * (stat.mean - meanAll) ** 2);
+        const eta2 = ssTotal > 0 ? ssBetween / ssTotal : 0;
+        return { year: yrRows[0].year, eta2 };
+      },
+      d => d.year
+    ).map(([year, obj]) => ({ year:+year, eta2: obj.eta2 })).sort((a,b)=>d3.ascending(a.year,b.year));
+    return { avg: d3.mean(byYear, d => d.eta2) ?? 0, byYear };
+  }
+
+  // RENDERERS
+  function renderFull(series) {
+    showFilters(false); 
+    diffTableWrap.style.display = "none";
+    setFiltersEnabled(false);
+    const {svg, xScale, yScale} = setupXY(yDomain, "Life expectancy (years)");
+    drawRegionLines(svg, xScale, yScale, series, d => d.life_expectancy);
+  }
+
+  function renderSample(series) {
+    diffTableWrap.style.display = "none";
+    setFiltersEnabled(false);
+    const {svg, xScale, yScale} = setupXY(yDomain, "Life expectancy (years)");
+    drawRegionLines(svg, xScale, yScale, series, d => d.life_expectancy);
+  }
+
+  function renderOverlay() {
+    diffTableWrap.style.display = "none";
+    setFiltersEnabled(true);
+    const selected = new Set(getSelectedRegions());
+    const sFull = seriesFull.filter(s => selected.has(s.region));
+    const sSample = seriesSample.filter(s => selected.has(s.region));
+    const {svg, xScale, yScale} = setupXY(yDomain, "Life expectancy (years)");
+    drawRegionLines(svg, xScale, yScale, sFull, d => d.life_expectancy, {strokeOpacity:1});
+    drawRegionLines(svg, xScale, yScale, sSample, d => d.life_expectancy, {strokeOpacity:0.55, strokeDasharray:"4,3"});
+  }
+
+  function renderDiff() {
+    setFiltersEnabled(true);
+    const selected = new Set(getSelectedRegions());
+    const sDiff = seriesDiff.filter(s => selected.has(s.region));
+    const maxVal = d3.max(sDiff.flatMap(s => s.values.map(v => v.diff))) ?? 0.5;
+    const yDiffDomain = [0, Math.ceil(maxVal + 0.5)]; // 下界 0，上界取整
+
+    const {svg, xScale, yScale} = setupXY(yDiffDomain, "Absolute difference |sample − full| (years)");
+    drawRegionLines(svg, xScale, yScale, sDiff, d => d.diff, {isDiff:true});
+
+    // 基線 0（可留可不留）
+    svg.append("line")
+      .attr("x1", margin.left).attr("x2", width - margin.right)
+      .attr("y1", yScale(0)).attr("y2", yScale(0))
+      .attr("stroke", "#555").attr("stroke-dasharray", "4,3");
+
+    const rows = buildDiffTableRows(Array.from(selected));
+    renderDiffTable(rows);
+  }
+
+  function renderDiffTable(rows) {
+    diffTableWrap.style.display = "block";
+    const tbl = document.createElement("table");
+    tbl.innerHTML = `<thead><tr>
+        <th>Year</th><th>Region</th><th>Absolute difference (|sample − full|, years)</th><th>Sample (years)</th><th>Full (years)</th>
+      </tr></thead>`;
+    const tb = document.createElement("tbody");
+    rows.forEach(r => {
+      const tr = document.createElement("tr");
+      tr.innerHTML = `<td>${r.year}</td><td>${r.region}</td>
+        <td>${r.diff.toFixed(2)}</td><td>${r.sample?.toFixed(2) ?? ""}</td><td>${r.full?.toFixed(2) ?? ""}</td>`;
+      tb.appendChild(tr);
+    });
+    tbl.appendChild(tb);
+    diffTableDiv.innerHTML = "";
+    diffTableDiv.appendChild(tbl);
+  }
+
+  function renderView(mode) {
+    applyFiltersVisibility(mode); // <-- ensure Filters hidden for Full/Sample
+    statusEl.textContent = "";
+    if (mode === "full") { renderFull(seriesFull); }
+    else if (mode === "sample") { renderSample(seriesSample); }
+    else if (mode === "diff") { renderDiff(); }
+    else if (mode === "overlay") { statusEl.textContent = "Solid = Full, Transparent/Dashed = Sample."; renderOverlay(); }
+  }
+  window.renderView = renderView;
+
+  function rerenderCurrent() {
+    const active = document.querySelector("#controls .btn.active");
+    renderView(active ? active.id.replace("btn-","") : "overlay");
+  }
+  window.rerenderCurrent = rerenderCurrent;
+
+  // Initial state
+  setActive(btnOverlay);
+  renderView("overlay");
+}).catch(err => {
+  document.body.insertAdjacentHTML("beforeend", `<pre style="color:#b00;white-space:pre-wrap;">${err}</pre>`);
+});
 </script>
