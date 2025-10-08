@@ -27,10 +27,10 @@
 - Observation: AI keeps the same code and visual style, only swapping the data source.  
 
 ### 6) Critique the AI output with guidelines (You, 15 pts)
-- Check here: https://chatgpt.com/share/68e5bba2-ad98-8013-a0dc-11fca4477398
+- Check here: https://chatgpt.com/share/68e5bba2-ad98-8013-a0dc-11fca4477398 or `gpt_chat_history.webarchive` if the linke is deprecated.
 
 ### 7) Ask AI to fix items one‑by‑one (AI, 5 pts)
-- Check here: https://chatgpt.com/share/68e5bba2-ad98-8013-a0dc-11fca4477398
+- Check here: https://chatgpt.com/share/68e5bba2-ad98-8013-a0dc-11fca4477398 or `gpt_chat_history.webarchive` if the linke is deprecated.
 
 ### 8) When AI cannot fix, you fix one item (AI + You, 20 pts)
 - Clear the Filter table in "Full" and "Sample".
@@ -71,4 +71,5 @@
 - `data/life_expectancy_rows_sample.csv` — row-level, sampled (~20% per Region×Year, seed=42) (2,624 rows).
 - `data/life_expectancy_regions.csv` — aggregated Full: mean life expectancy per Region×Year.
 - `data/life_expectancy_regions_sample.csv` — aggregated Sample: mean life expectancy per Region×Year.
+-  `gpt_chat_history.webarchive` - chat history with gpt.
 - `README.md` — this document.
